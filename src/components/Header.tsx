@@ -1,12 +1,13 @@
 import React, { useRef } from 'react';
 import { useDrawingStore } from '../store/drawingStore';
-import { FolderOpen, Save, Download } from 'lucide-react';
+import { FolderOpen, Save, Download, Image as ImageIcon } from 'lucide-react';
+
 export const Header: React.FC = () => {
-    const { undo, redo, toggleLayerPanel, isLayerPanelOpen, setCanvasAction, loadProject, userName, userColor, historyStep, historyStack } = useDrawingStore();
+    const { undo, redo, toggleLayerPanel, isLayerPanelOpen, setCanvasAction, loadProject, userName, userColor, historyStep, historyStack, setReferenceImage, referenceImage } = useDrawingStore();
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const imageInputRef = useRef<HTMLInputElement>(null);
 
     const handleFileLoad = (e: React.ChangeEvent<HTMLInputElement>) => {
-        // ... (Keep existing logic)
         const file = e.target.files?.[0];
         if (!file) return;
 
@@ -29,6 +30,17 @@ export const Header: React.FC = () => {
         if (fileInputRef.current) fileInputRef.current.value = '';
     };
 
+    const handleImageLoad = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+            setReferenceImage(ev.target?.result as string);
+        };
+        reader.readAsDataURL(file);
+        if (imageInputRef.current) imageInputRef.current.value = '';
+    };
+
     const userInitial = userName ? userName.charAt(0).toUpperCase() : 'P';
     const displayColor = userColor || '#6366f1';
 
@@ -39,6 +51,13 @@ export const Header: React.FC = () => {
                 ref={fileInputRef}
                 onChange={handleFileLoad}
                 accept=".json"
+                className="hidden"
+            />
+            <input
+                type="file"
+                ref={imageInputRef}
+                onChange={handleImageLoad}
+                accept="image/*"
                 className="hidden"
             />
 
@@ -54,7 +73,6 @@ export const Header: React.FC = () => {
                     <h1 className="font-bold text-gray-800 text-lg md:text-xl tracking-tight leading-tight">
                         {userName || 'Pixel Genius'}
                     </h1>
-
                 </div>
             </div>
 
@@ -62,25 +80,42 @@ export const Header: React.FC = () => {
                 {/* File Actions */}
                 <div className="flex gap-1 p-1 bg-gray-100/50 rounded-xl">
                     <button
-                        className="modern-button w-8 h-8 md:w-10 md:h-10 flex items-center justify-center rounded-lg hover:bg-white hover:text-indigo-600 hover:shadow-md text-gray-600 transition-all"
+                        className="modern-button w-8 h-8 md:w-10 md:h-10 flex items-center justify-center rounded-lg hover:bg-white hover:text-indigo-600 hover:shadow-md text-gray-600 transition-all relative group"
                         onClick={() => fileInputRef.current?.click()}
-                        title="Load Project"
                     >
                         <FolderOpen size={20} />
+                        <span className="absolute invisible group-hover:visible opacity-0 group-hover:opacity-100 transition-all duration-200 z-50 px-2 py-1 bg-gray-800 text-white text-xs font-medium rounded shadow-lg whitespace-nowrap pointer-events-none top-full left-1/2 -translate-x-1/2 mt-2 before:content-[''] before:absolute before:bottom-full before:left-1/2 before:-translate-x-1/2 before:-mb-0 before:border-4 before:border-transparent before:border-b-gray-800">
+                            Load Project
+                        </span>
                     </button>
                     <button
-                        className="modern-button w-8 h-8 md:w-10 md:h-10 flex items-center justify-center rounded-lg hover:bg-white hover:text-indigo-600 hover:shadow-md text-gray-600 transition-all"
+                        className="modern-button w-8 h-8 md:w-10 md:h-10 flex items-center justify-center rounded-lg hover:bg-white hover:text-indigo-600 hover:shadow-md text-gray-600 transition-all relative group"
                         onClick={() => setCanvasAction('SAVE_PROJECT')}
-                        title="Save Project"
                     >
                         <Save size={20} />
+                        <span className="absolute invisible group-hover:visible opacity-0 group-hover:opacity-100 transition-all duration-200 z-50 px-2 py-1 bg-gray-800 text-white text-xs font-medium rounded shadow-lg whitespace-nowrap pointer-events-none top-full left-1/2 -translate-x-1/2 mt-2 before:content-[''] before:absolute before:bottom-full before:left-1/2 before:-translate-x-1/2 before:-mb-0 before:border-4 before:border-transparent before:border-b-gray-800">
+                            Save Project
+                        </span>
                     </button>
                     <button
-                        className="modern-button w-8 h-8 md:w-10 md:h-10 flex items-center justify-center rounded-lg hover:bg-white hover:text-indigo-600 hover:shadow-md text-gray-600 transition-all"
+                        className="modern-button w-8 h-8 md:w-10 md:h-10 flex items-center justify-center rounded-lg hover:bg-white hover:text-indigo-600 hover:shadow-md text-gray-600 transition-all relative group"
                         onClick={() => setCanvasAction('EXPORT_PNG')}
-                        title="Export Image"
                     >
                         <Download size={20} />
+                        <span className="absolute invisible group-hover:visible opacity-0 group-hover:opacity-100 transition-all duration-200 z-50 px-2 py-1 bg-gray-800 text-white text-xs font-medium rounded shadow-lg whitespace-nowrap pointer-events-none top-full left-1/2 -translate-x-1/2 mt-2 before:content-[''] before:absolute before:bottom-full before:left-1/2 before:-translate-x-1/2 before:-mb-0 before:border-4 before:border-transparent before:border-b-gray-800">
+                            Export Image
+                        </span>
+                    </button>
+                    <div className="w-px h-6 bg-gray-300 mx-1"></div>
+                    <button
+                        className={`modern-button w-8 h-8 md:w-10 md:h-10 flex items-center justify-center rounded-lg transition-all relative group
+                             ${referenceImage ? 'bg-indigo-100 text-indigo-600' : 'hover:bg-white hover:text-indigo-600 hover:shadow-md text-gray-600'}`}
+                        onClick={() => imageInputRef.current?.click()}
+                    >
+                        <ImageIcon size={20} />
+                        <span className="absolute invisible group-hover:visible opacity-0 group-hover:opacity-100 transition-all duration-200 z-50 px-2 py-1 bg-gray-800 text-white text-xs font-medium rounded shadow-lg whitespace-nowrap pointer-events-none top-full left-1/2 -translate-x-1/2 mt-2 before:content-[''] before:absolute before:bottom-full before:left-1/2 before:-translate-x-1/2 before:-mb-0 before:border-4 before:border-transparent before:border-b-gray-800">
+                            Contoh Gambar
+                        </span>
                     </button>
                 </div>
 
@@ -90,7 +125,7 @@ export const Header: React.FC = () => {
                 {/* Center Actions (Undo/Redo) */}
                 <div className="flex gap-1 p-1 bg-gray-100/50 rounded-xl">
                     <button
-                        className={`modern-button w-8 h-8 md:w-10 md:h-10 flex items-center justify-center rounded-lg transition-all
+                        className={`modern-button w-8 h-8 md:w-10 md:h-10 flex items-center justify-center rounded-lg transition-all relative group
                             ${historyStep > 0
                                 ? 'hover:bg-white hover:text-indigo-600 hover:shadow-md text-gray-600 cursor-pointer'
                                 : 'text-gray-300 cursor-not-allowed'
@@ -98,14 +133,16 @@ export const Header: React.FC = () => {
                         `}
                         onClick={undo}
                         disabled={historyStep <= 0}
-                        title="Undo"
                     >
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                             <path d="M3 7v6h6" /><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13" />
                         </svg>
+                        <span className="absolute invisible group-hover:visible opacity-0 group-hover:opacity-100 transition-all duration-200 z-50 px-2 py-1 bg-gray-800 text-white text-xs font-medium rounded shadow-lg whitespace-nowrap pointer-events-none top-full left-1/2 -translate-x-1/2 mt-2 before:content-[''] before:absolute before:bottom-full before:left-1/2 before:-translate-x-1/2 before:-mb-0 before:border-4 before:border-transparent before:border-b-gray-800">
+                            Undo
+                        </span>
                     </button>
                     <button
-                        className={`modern-button w-8 h-8 md:w-10 md:h-10 flex items-center justify-center rounded-lg transition-all
+                        className={`modern-button w-8 h-8 md:w-10 md:h-10 flex items-center justify-center rounded-lg transition-all relative group
                             ${historyStack.length > 0 && historyStep < historyStack.length - 1
                                 ? 'hover:bg-white hover:text-indigo-600 hover:shadow-md text-gray-600 cursor-pointer'
                                 : 'text-gray-300 cursor-not-allowed'
@@ -113,11 +150,13 @@ export const Header: React.FC = () => {
                         `}
                         onClick={redo}
                         disabled={!historyStack.length || historyStep >= historyStack.length - 1}
-                        title="Redo"
                     >
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                             <path d="M21 7v6h-6" /><path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3L21 13" />
                         </svg>
+                        <span className="absolute invisible group-hover:visible opacity-0 group-hover:opacity-100 transition-all duration-200 z-50 px-2 py-1 bg-gray-800 text-white text-xs font-medium rounded shadow-lg whitespace-nowrap pointer-events-none top-full left-1/2 -translate-x-1/2 mt-2 before:content-[''] before:absolute before:bottom-full before:left-1/2 before:-translate-x-1/2 before:-mb-0 before:border-4 before:border-transparent before:border-b-gray-800">
+                            Redo
+                        </span>
                     </button>
                 </div>
             </div>

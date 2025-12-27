@@ -6,6 +6,7 @@ import { useDrawingStore } from '../store/drawingStore';
 import { useSound } from '../hooks/useSound';
 import { getRelativePointerPosition, floodFill } from '../utils/canvasUtils';
 import { CanvasItem } from './CanvasItem';
+import { Maximize2, Minimize2, X } from 'lucide-react';
 
 export const DrawingCanvas: React.FC = () => {
     // ... (rest of the file until the overlay layer)
@@ -27,7 +28,9 @@ export const DrawingCanvas: React.FC = () => {
         setPosition,
         canvasAction,
         setCanvasAction,
-        deleteLines
+        deleteLines,
+        referenceImage,
+        activeLayerId
     } = useDrawingStore();
 
     const { playSound } = useSound();
@@ -45,6 +48,10 @@ export const DrawingCanvas: React.FC = () => {
 
     // Selection State
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+    // Reference Image UI State
+    const [isRefExpanded, setIsRefExpanded] = useState(false);
+    const { setReferenceImage } = useDrawingStore(); // Ensure we can close it
 
     // Transformer Logic
     useEffect(() => {
@@ -406,6 +413,9 @@ export const DrawingCanvas: React.FC = () => {
                     <Rect x={0} y={0} width={stageSize.width} height={stageSize.height} fill="white" listening={false} />
                 </Layer>
 
+                {/* REFERENCE IMAGE LAYER */}
+
+
                 {layers.map((layer) => (
                     layer.visible && (
                         <Layer key={layer.id} opacity={layer.opacity}>
@@ -422,6 +432,19 @@ export const DrawingCanvas: React.FC = () => {
                                     onTransformEnd={onShapeTransformEnd}
                                 />
                             ))}
+                            {/* REAL-TIME PREVIEW IN ACTIVE LAYER */}
+                            {layer.id === activeLayerId && currentLine && (
+                                <CanvasItem
+                                    line={{ ...currentLine, id: 'preview' } as any}
+                                    stageSize={stageSize}
+                                    index={-1}
+                                    isSelected={false}
+                                    isSelectTool={false}
+                                    onSelect={() => { }}
+                                    onDragEnd={() => { }}
+                                    onTransformEnd={() => { }}
+                                />
+                            )}
                         </Layer>
                     )
                 ))}
@@ -433,36 +456,22 @@ export const DrawingCanvas: React.FC = () => {
                         boundBoxFunc={(oldBox, newBox) => (newBox.width < 5 || newBox.height < 5) ? oldBox : newBox}
                     />
 
-                    {/* PREVIEW */}
-                    {activeTool !== 'select' && currentLine && (
-                        <Group opacity={0.7}>
-                            <CanvasItem
-                                line={{ ...currentLine, id: 'preview' } as any}
-                                stageSize={stageSize}
-                                index={-1}
-                                isSelected={false}
-                                isSelectTool={false}
-                                onSelect={() => { }}
-                                onDragEnd={() => { }}
-                                onTransformEnd={() => { }}
-                            />
-                            {activeTool === 'mirror' && (
-                                <CanvasItem
-                                    line={{
-                                        ...currentLine,
-                                        id: 'preview-mirror',
-                                        points: currentLine.points.map((val, i) => i % 2 === 0 ? stageSize.width - val : val)
-                                    } as any}
-                                    stageSize={stageSize}
-                                    index={-1}
-                                    isSelected={false}
-                                    isSelectTool={false}
-                                    onSelect={() => { }}
-                                    onDragEnd={() => { }}
-                                    onTransformEnd={() => { }}
-                                />
-                            )}
-                        </Group>
+                    {/* MIRROR PREVIEW */}
+                    {activeTool === 'mirror' && currentLine && (
+                        <CanvasItem
+                            line={{
+                                ...currentLine,
+                                points: currentLine.points.map((val, i) => i % 2 === 0 ? stageSize.width - val : val),
+                                id: 'preview-mirror'
+                            } as any}
+                            stageSize={stageSize}
+                            index={-1}
+                            isSelected={false}
+                            isSelectTool={false}
+                            onSelect={() => { }}
+                            onDragEnd={() => { }}
+                            onTransformEnd={() => { }}
+                        />
                     )}
 
                     {/* CURSOR */}
@@ -493,42 +502,99 @@ export const DrawingCanvas: React.FC = () => {
                 </Layer>
             </Stage>
 
-            {textInput && (
-                <textarea
-                    ref={textareaRef}
-                    value={textInput.text}
-                    onChange={(e) => setTextInput({ ...textInput, text: e.target.value })}
-                    onKeyDown={(e) => {
-                        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); finalizeText(); }
-                        if (e.key === 'Escape') setTextInput(null);
-                    }}
-                    onBlur={finalizeText}
-                    placeholder="Type..."
-                    style={{
-                        position: 'absolute',
-                        left: textInput.domX,
-                        top: textInput.domY,
-                        fontSize: `${brushSize * 3 * scale}px`,
-                        lineHeight: 1,
-                        color: brushColor,
-                        background: 'rgba(255, 255, 255, 0.95)',
-                        border: '2px solid #6366f1',
-                        borderRadius: '8px',
-                        boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-                        outline: 'none',
-                        minWidth: '100px',
-                        padding: '4px 8px',
-                        margin: '0',
-                        resize: 'none',
-                        overflow: 'hidden',
-                        whiteSpace: 'pre',
-                        transformOrigin: 'top left',
-                        zIndex: 100,
-                        fontFamily: 'sans-serif'
-                    }}
-                    className="backdrop-blur-sm animate-in fade-in zoom-in duration-200"
-                />
-            )}
-        </div>
+            {
+                textInput && (
+                    <textarea
+                        ref={textareaRef}
+                        value={textInput.text}
+                        onChange={(e) => setTextInput({ ...textInput, text: e.target.value })}
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); finalizeText(); }
+                            if (e.key === 'Escape') setTextInput(null);
+                        }}
+                        onBlur={finalizeText}
+                        placeholder="Type..."
+                        style={{
+                            position: 'absolute',
+                            left: textInput.domX,
+                            top: textInput.domY,
+                            fontSize: `${brushSize * 3 * scale}px`,
+                            lineHeight: 1,
+                            color: brushColor,
+                            background: 'rgba(255, 255, 255, 0.95)',
+                            border: '2px solid #6366f1',
+                            borderRadius: '8px',
+                            boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                            outline: 'none',
+                            minWidth: '100px',
+                            padding: '4px 8px',
+                            margin: '0',
+                            resize: 'none',
+                            overflow: 'hidden',
+                            whiteSpace: 'pre',
+                            transformOrigin: 'top left',
+                            zIndex: 100,
+                            fontFamily: 'sans-serif'
+                        }}
+                        className="backdrop-blur-sm animate-in fade-in zoom-in duration-200"
+                    />
+                )
+            }
+
+            {/* REFERENCE IMAGE OVERLAY */}
+            {
+                referenceImage && (
+                    <div
+                        className={`absolute z-50 transition-all duration-300 ease-in-out cursor-default ${isRefExpanded
+                            ? 'inset-0 bg-black/80 flex items-center justify-center p-8'
+                            : 'top-4 left-4 w-32 h-32 md:w-40 md:h-40 bg-white p-1 rounded-xl shadow-2xl border-2 border-indigo-100'
+                            }`}
+                    >
+                        {!isRefExpanded ? (
+                            /* THUMBNAIL MODE */
+                            <div className="relative w-full h-full group cursor-pointer" onClick={() => setIsRefExpanded(true)}>
+                                <img
+                                    src={referenceImage}
+                                    alt="Reference"
+                                    className="w-full h-full object-cover rounded-lg"
+                                />
+                                {/* Hover Overlay */}
+                                <div className="absolute inset-0 bg-black/20 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                    <Maximize2 className="text-white drop-shadow-md" size={24} />
+                                </div>
+                                {/* Close Button */}
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        setReferenceImage(null);
+                                    }}
+                                    className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 shadow-md hover:bg-red-600 hover:scale-110 transition-transform"
+                                    title="Close Reference"
+                                >
+                                    <X size={14} />
+                                </button>
+                            </div>
+                        ) : (
+                            /* EXPANDED MODE (LIGHTBOX) */
+                            <div className="relative flex items-center justify-center">
+                                <img
+                                    src={referenceImage}
+                                    alt="Reference Full"
+                                    className="object-contain rounded-lg shadow-2xl"
+                                    style={{ maxWidth: '90vw', maxHeight: '85vh' }}
+                                />
+                                <button
+                                    onClick={() => setIsRefExpanded(false)}
+                                    className="absolute -top-4 -right-4 md:top-4 md:right-4 bg-white text-gray-800 p-2 rounded-full shadow-lg hover:bg-gray-100 transition-transform hover:scale-110"
+                                    title="Minimize"
+                                >
+                                    <Minimize2 size={24} />
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                )
+            }
+        </div >
     );
 };

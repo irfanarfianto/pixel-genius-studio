@@ -93,6 +93,20 @@ export const Toolbar: React.FC = () => {
     const [isBrushesOpen, setIsBrushesOpen] = React.useState(false);
     const [isColorsOpen, setIsColorsOpen] = React.useState(false);
 
+    // Tooltip State
+    const [tooltipData, setTooltipData] = React.useState<{ x: number, y: number, text: string, align: 'right' | 'top' } | null>(null);
+
+    const handleMouseEnter = (e: React.MouseEvent, text: string) => {
+        const rect = e.currentTarget.getBoundingClientRect();
+        const isDesktop = window.innerWidth >= 768;
+        const x = isDesktop ? rect.right + 12 : rect.left + rect.width / 2;
+        const y = isDesktop ? rect.top + rect.height / 2 : rect.top - 12;
+        const align = isDesktop ? 'right' : 'top';
+        setTooltipData({ x, y, text, align });
+    };
+
+    const handleMouseLeave = () => setTooltipData(null);
+
     // Grouping Logic
     const SELECT_TOOL = TOOLS.find(t => t.id === 'select');
 
@@ -114,7 +128,8 @@ export const Toolbar: React.FC = () => {
                     : 'hover:bg-gray-100'
                 } ${className}`}
             onClick={onClick}
-            title={tool.label}
+            onMouseEnter={(e) => handleMouseEnter(e, tool.label)}
+            onMouseLeave={handleMouseLeave}
         >
             {tool.icon}
         </button>
@@ -151,7 +166,7 @@ export const Toolbar: React.FC = () => {
                 {/* SHAPES */}
                 <div className="relative group/shape">
                     <button
-                        className={`modern-button w-10 h-10 md:w-12 md:h-12 rounded-xl flex items-center justify-center text-xl md:text-2xl transition-all relative shrink-0
+                        className={`modern-button w-10 h-10 md:w-12 md:h-12 rounded-xl flex items-center justify-center text-xl md:text-2xl transition-all relative shrink-0 group
                             ${isShapeActive && !isShapesOpen
                                 ? 'bg-indigo-100 text-indigo-700 shadow-inner ring-2 ring-indigo-500 ring-offset-2'
                                 : 'hover:bg-gray-100'
@@ -159,7 +174,8 @@ export const Toolbar: React.FC = () => {
                             ${isShapesOpen ? 'bg-indigo-50 border-indigo-200 ring-2 ring-indigo-500 ring-offset-2' : ''}
                         `}
                         onClick={() => { setIsShapesOpen(!isShapesOpen); setIsBrushesOpen(false); setIsColorsOpen(false); }}
-                        title="Shapes"
+                        onMouseEnter={(e) => handleMouseEnter(e, 'Shapes')}
+                        onMouseLeave={handleMouseLeave}
                     >
                         {currentShape?.icon}
                         <div className={`absolute bottom-1 right-1 w-1.5 h-1.5 rounded-full transition-colors ${isShapeActive ? 'bg-indigo-500' : 'bg-gray-400'}`}></div>
@@ -195,7 +211,7 @@ export const Toolbar: React.FC = () => {
                 {/* BRUSHES */}
                 <div className="relative group/brush">
                     <button
-                        className={`modern-button w-10 h-10 md:w-12 md:h-12 rounded-xl flex items-center justify-center text-xl md:text-2xl transition-all relative shrink-0
+                        className={`modern-button w-10 h-10 md:w-12 md:h-12 rounded-xl flex items-center justify-center text-xl md:text-2xl transition-all relative shrink-0 group
                             ${isBrushActive && !isBrushesOpen
                                 ? 'bg-indigo-100 text-indigo-700 shadow-inner ring-2 ring-indigo-500 ring-offset-2'
                                 : 'hover:bg-gray-100'
@@ -203,7 +219,8 @@ export const Toolbar: React.FC = () => {
                             ${isBrushesOpen ? 'bg-indigo-50 border-indigo-200 ring-2 ring-indigo-500 ring-offset-2' : ''}
                         `}
                         onClick={() => { setIsBrushesOpen(!isBrushesOpen); setIsShapesOpen(false); setIsColorsOpen(false); }}
-                        title="Brushes"
+                        onMouseEnter={(e) => handleMouseEnter(e, 'Brushes')}
+                        onMouseLeave={handleMouseLeave}
                     >
                         {currentBrush?.icon}
                         <div className={`absolute bottom-1 right-1 w-1.5 h-1.5 rounded-full transition-colors ${isBrushActive ? 'bg-indigo-500' : 'bg-gray-400'}`}></div>
@@ -268,10 +285,11 @@ export const Toolbar: React.FC = () => {
 
             <div className="relative group/colors shrink-0">
                 <button
-                    className={`w-10 h-10 md:w-12 md:h-12 rounded-full border-4 border-white shadow-sm ring-1 ring-gray-200 transition-transform ${isColorsOpen ? 'scale-110 ring-indigo-300' : 'hover:scale-105'}`}
+                    className={`w-10 h-10 md:w-12 md:h-12 rounded-full border-4 border-white shadow-sm ring-1 ring-gray-200 transition-transform group relative ${isColorsOpen ? 'scale-110 ring-indigo-300' : 'hover:scale-105'}`}
                     style={{ backgroundColor: brushColor }}
                     onClick={() => { setIsColorsOpen(!isColorsOpen); setIsShapesOpen(false); setIsBrushesOpen(false); }}
-                    title="Colors"
+                    onMouseEnter={(e) => handleMouseEnter(e, 'Colors')}
+                    onMouseLeave={handleMouseLeave}
                 />
 
                 {isColorsOpen && (
@@ -310,6 +328,23 @@ export const Toolbar: React.FC = () => {
                     </RenderPopup>
                 )}
             </div>
+            {tooltipData && createPortal(
+                <div
+                    className="fixed z-[9999] px-2 py-1 bg-gray-800 text-white text-xs font-medium rounded shadow-lg whitespace-nowrap pointer-events-none animate-in fade-in duration-200"
+                    style={{
+                        left: tooltipData.x,
+                        top: tooltipData.y,
+                        transform: tooltipData.align === 'right' ? 'translateY(-50%)' : 'translate(-50%, -100%)'
+                    }}
+                >
+                    {tooltipData.text}
+                    <div className={`absolute w-0 h-0 border-4 border-transparent ${tooltipData.align === 'right'
+                        ? 'border-r-gray-800 right-full top-1/2 -translate-y-1/2 -mr-[1px]'
+                        : 'border-t-gray-800 top-full left-1/2 -translate-x-1/2 -mt-[1px]'
+                        }`} />
+                </div>,
+                document.body
+            )}
         </div>
     );
 };

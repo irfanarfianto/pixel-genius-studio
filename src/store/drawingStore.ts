@@ -66,6 +66,12 @@ interface DrawingState {
     updateLineInActiveLayer: (lineIndex: number, newAttrs: Partial<Line>) => void; // New Action
     deleteLines: (ids: string[]) => void;
 
+    // Reference Image (Tracing)
+    referenceImage: string | null;
+    setReferenceImage: (img: string | null) => void;
+    referenceOpacity: number;
+    setReferenceOpacity: (opacity: number) => void;
+
     // History
     historyStep: number;
     historyStack: Layer[][];
@@ -210,6 +216,12 @@ export const useDrawingStore = create<DrawingState>()(
                 get().saveHistory();
             },
 
+            // Reference Image
+            referenceImage: null,
+            setReferenceImage: (img) => set({ referenceImage: img }),
+            referenceOpacity: 0.5,
+            setReferenceOpacity: (opacity) => set({ referenceOpacity: opacity }),
+
             // History Management
             historyStep: 0,
             historyStack: [],
@@ -275,7 +287,9 @@ export const useDrawingStore = create<DrawingState>()(
                 activeTool: state.activeTool,
                 userName: state.userName,
                 userColor: state.userColor,
-                stageSize: state.stageSize
+                stageSize: state.stageSize,
+                referenceImage: state.referenceImage,
+                referenceOpacity: state.referenceOpacity
             }),
         }
     )
