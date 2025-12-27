@@ -1,12 +1,14 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { Stage, Layer, Rect, Circle, Text, Transformer, Group, Image } from 'react-konva';
-import type { KonvaEventObject } from 'konva/lib/Node';
 import Konva from 'konva';
-import { useDrawingStore } from '../store/drawingStore';
+import type { KonvaEventObject } from 'konva/lib/Node';
+
 import { useSound } from '../hooks/useSound';
+import { useDrawingStore } from '../store/drawingStore';
+import { ReferenceImageControls } from './canvas/ReferenceImageControls';
+import { TextInputOverlay } from './canvas/TextInputOverlay';
 import { getRelativePointerPosition } from '../utils/canvasUtils';
 import { CanvasItem } from './CanvasItem';
-import { X } from 'lucide-react';
 
 export const DrawingCanvas: React.FC = () => {
     // ... (rest of the file until the overlay layer)
@@ -31,8 +33,7 @@ export const DrawingCanvas: React.FC = () => {
         deleteLines,
         referenceImage,
         activeLayerId,
-        referenceOpacity,
-        setReferenceOpacity
+        referenceOpacity
     } = useDrawingStore();
 
     const { playSound } = useSound();
@@ -42,7 +43,6 @@ export const DrawingCanvas: React.FC = () => {
     const isDrawing = useRef(false);
     const isPanning = useRef(false);
     const lastPanPos = useRef({ x: 0, y: 0 });
-    const lastDist = useRef<number>(0); // Track pinch distance
     const [isSpacePressed, setIsSpacePressed] = useState(false); // For Space+Drag panning
 
     const [currentLine, setCurrentLine] = useState<{
@@ -58,7 +58,7 @@ export const DrawingCanvas: React.FC = () => {
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [selectionBox, setSelectionBox] = useState<{ x: number, y: number, width: number, height: number, startX: number, startY: number } | null>(null);
 
-    const { setReferenceImage } = useDrawingStore(); // Ensure we can close it
+
 
     // Load Reference Image for Konva
     const [refImgObj, setRefImgObj] = useState<HTMLImageElement | null>(null);
@@ -184,7 +184,7 @@ export const DrawingCanvas: React.FC = () => {
             const dateStr = now.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
             const timeStr = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
             const { userName } = useDrawingStore.getState();
-            const watermarkText = `${userName || 'Pixel Genius'} • ${dateStr} ${timeStr}`;
+            const watermarkText = `${userName || 'Pixel Genius'} • ${dateStr} ${timeStr} `;
 
             const text = new Konva.Text({
                 x: 10,
@@ -214,7 +214,7 @@ export const DrawingCanvas: React.FC = () => {
             }
 
             const link = document.createElement('a');
-            link.download = `pixel-genius-${Date.now()}.png`;
+            link.download = `pixel - genius - ${Date.now()}.png`;
             link.href = uri;
             document.body.appendChild(link);
             link.click();
@@ -224,7 +224,7 @@ export const DrawingCanvas: React.FC = () => {
             const blob = new Blob([projectData], { type: 'application/json' });
             const link = document.createElement('a');
             link.href = URL.createObjectURL(blob);
-            link.download = `pixel-genius-project-${Date.now()}.json`;
+            link.download = `pixel - genius - project - ${Date.now()}.json`;
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
@@ -270,16 +270,6 @@ export const DrawingCanvas: React.FC = () => {
 
     const isFinalizing = useRef(false);
     const creationTime = useRef(Date.now()); // Track creation time to prevent immediate close
-    const textareaRef = useRef<HTMLTextAreaElement>(null);
-
-    useEffect(() => {
-        if (textInput && textareaRef.current) {
-            // Small delay to ensure render and prevent immediate blur/race conditions
-            setTimeout(() => {
-                textareaRef.current?.focus();
-            }, 50);
-        }
-    }, [textInput]);
 
     // Handle Delete Key
     useEffect(() => {
@@ -311,7 +301,6 @@ export const DrawingCanvas: React.FC = () => {
     const finalizeText = () => {
         // Prevent accidental closing immediately after creation (e.g. from phantom clicks/blurs)
         if (Date.now() - creationTime.current < 500) {
-            if (textareaRef.current) setTimeout(() => textareaRef.current?.focus(), 10);
             return;
         }
 
@@ -753,98 +742,17 @@ export const DrawingCanvas: React.FC = () => {
                 </Layer>
             </Stage>
 
-            {
-                textInput && (
-                    <textarea
-                        ref={textareaRef}
-                        value={textInput.text}
-                        onChange={(e) => setTextInput({ ...textInput, text: e.target.value })}
-                        onKeyDown={(e) => {
-                            if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); finalizeText(); }
-                            if (e.key === 'Escape') setTextInput(null);
-                        }}
-                        onBlur={finalizeText}
-                        placeholder="Type..."
-                        autoFocus
-                        style={{
-                            position: 'absolute',
-                            zIndex: 10000,
-                            left: textInput.domX,
-                            top: textInput.domY,
-                            fontSize: `${brushSize * 3 * scale}px`,
-                            lineHeight: 1,
-                            color: brushColor,
-                            background: 'rgba(255, 255, 255, 0.95)',
-                            border: '2px solid #6366f1',
-                            borderRadius: '8px',
-                            boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-                            outline: 'none',
-                            minWidth: '100px',
-                            minHeight: '40px',
-                            backgroundColor: '#fffbeb', // Light yellow for visibility
-                            padding: '4px 8px',
-                            margin: '0',
-                            resize: 'none',
-                            overflow: 'hidden',
-                            whiteSpace: 'pre',
-                            transformOrigin: 'top left',
+            <TextInputOverlay
+                textInput={textInput}
+                setTextInput={setTextInput}
+                brushSize={brushSize}
+                brushColor={brushColor}
+                scale={scale}
+                onFinalize={finalizeText}
+            />
 
-                            fontFamily: 'sans-serif'
-                        }}
-                        className="backdrop-blur-sm animate-in fade-in zoom-in duration-200"
-                    />
-
-                )
-            }
-
-            {/* REFERENCE IMAGE CONTROLS ONLY */}
-            {
-                referenceImage && refImgObj && (
-                    <div
-                        className="absolute z-50 flex flex-col gap-2 pointer-events-auto transition-opacity duration-75"
-                        style={{
-                            left: position.x + (10 * scale),
-                            top: position.y + (10 * scale),
-                            transform: 'translate(calc(-100% - 12px), 0)', // Position to the left of the image with gap
-                        }}
-                    >
-                        {/* Close Button & Title */}
-                        <div className="bg-white/90 backdrop-blur-sm p-2 rounded-lg shadow-md border border-indigo-100 flex items-center gap-2">
-                            <span className="text-xs font-bold text-indigo-600 uppercase tracking-wider px-1">Ref Image</span>
-                            <button
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    setReferenceImage(null);
-                                }}
-                                className="bg-red-50 text-red-500 rounded p-1 hover:bg-red-100 transition-colors"
-                                title="Close Reference"
-                            >
-                                <X size={14} />
-                            </button>
-                        </div>
-
-                        {/* Opacity Slider */}
-                        <div
-                            className="bg-white/90 backdrop-blur-sm px-2 py-1.5 rounded-lg shadow-md border border-indigo-100"
-                            onClick={(e) => e.stopPropagation()}
-                        >
-                            <div className="flex items-center gap-2">
-                                <span className="text-xs font-medium text-gray-600">Opacity</span>
-                                <input
-                                    type="range"
-                                    min="0.1"
-                                    max="1"
-                                    step="0.1"
-                                    value={referenceOpacity}
-                                    onChange={(e) => setReferenceOpacity(parseFloat(e.target.value))}
-                                    className="flex-1 h-1 bg-gray-200 rounded-lg appearance-none cursor-pointer w-24"
-                                    onClick={(e) => e.stopPropagation()}
-                                />
-                            </div>
-                        </div>
-                    </div>
-                )
-            }
+            <ReferenceImageControls />
         </div >
     );
 };
+
