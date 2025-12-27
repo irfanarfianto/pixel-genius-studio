@@ -4,7 +4,7 @@ import type { KonvaEventObject } from 'konva/lib/Node';
 import Konva from 'konva';
 import { useDrawingStore } from '../store/drawingStore';
 import { useSound } from '../hooks/useSound';
-import { getRelativePointerPosition, floodFill } from '../utils/canvasUtils';
+import { getRelativePointerPosition } from '../utils/canvasUtils';
 import { CanvasItem } from './CanvasItem';
 import { Maximize2, Minimize2, X } from 'lucide-react';
 
@@ -30,7 +30,9 @@ export const DrawingCanvas: React.FC = () => {
         setCanvasAction,
         deleteLines,
         referenceImage,
-        activeLayerId
+        activeLayerId,
+        referenceOpacity,
+        setReferenceOpacity
     } = useDrawingStore();
 
     const { playSound } = useSound();
@@ -48,6 +50,7 @@ export const DrawingCanvas: React.FC = () => {
 
     // Selection State
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+    const [selectionBox, setSelectionBox] = useState<{ x: number, y: number, width: number, height: number, startX: number, startY: number } | null>(null);
 
     // Reference Image UI State
     const [isRefExpanded, setIsRefExpanded] = useState(false);
@@ -158,7 +161,34 @@ export const DrawingCanvas: React.FC = () => {
 
             stage.scale({ x: 1, y: 1 });
             stage.position({ x: 0, y: 0 });
+
+            // Add watermark temporarily
+            const watermarkLayer = new Konva.Layer();
+            const now = new Date();
+            const dateStr = now.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+            const timeStr = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+            const { userName } = useDrawingStore.getState();
+            const watermarkText = `${userName || 'Pixel Genius'} • ${dateStr} ${timeStr}`;
+
+            const text = new Konva.Text({
+                x: 10,
+                y: stageSize.height - 30,
+                text: watermarkText,
+                fontSize: 14,
+                fontFamily: 'Inter, sans-serif',
+                fill: '#666666',
+                opacity: 0.7
+            });
+
+            watermarkLayer.add(text);
+            stage.add(watermarkLayer);
+            watermarkLayer.draw();
+
             const uri = stage.toDataURL({ pixelRatio: 2 });
+
+            // Remove watermark
+            watermarkLayer.destroy();
+
             stage.scale({ x: oldScale, y: oldScale });
             stage.position(oldPos);
 
@@ -186,18 +216,34 @@ export const DrawingCanvas: React.FC = () => {
         setCanvasAction(null);
     }, [canvasAction, layers, setCanvasAction, selectedIds]);
 
-    // Resize Logic
+    // Initialize canvas size to fixed dimensions and auto-fit
     useEffect(() => {
-        const handleResize = () => {
-            const container = document.getElementById('canvas-container');
-            if (container) {
-                setStageSize({ width: container.offsetWidth, height: container.offsetHeight });
-            }
-        };
-        window.addEventListener('resize', handleResize);
-        handleResize();
-        return () => window.removeEventListener('resize', handleResize);
-    }, [setStageSize]);
+        const container = document.getElementById('canvas-container');
+        if (!container) return;
+
+        // Set fixed canvas size (1200x800 - standard artboard size)
+        const CANVAS_WIDTH = 1200;
+        const CANVAS_HEIGHT = 800;
+
+        if (stageSize.width !== CANVAS_WIDTH || stageSize.height !== CANVAS_HEIGHT) {
+            setStageSize({ width: CANVAS_WIDTH, height: CANVAS_HEIGHT });
+        }
+
+        // Auto-fit canvas to screen on initial load
+        const w = container.offsetWidth;
+        const h = container.offsetHeight;
+        const padding = 40;
+
+        const scaleX = (w - padding) / CANVAS_WIDTH;
+        const scaleY = (h - padding) / CANVAS_HEIGHT;
+        const newScale = Math.min(scaleX, scaleY, 1); // Don't zoom in beyond 100%
+
+        const newX = (w - CANVAS_WIDTH * newScale) / 2;
+        const newY = (h - CANVAS_HEIGHT * newScale) / 2;
+
+        setScale(newScale);
+        setPosition({ x: newX, y: newY });
+    }, []); // Only run once on mount
 
     const [cursorPos, setCursorPos] = useState<{ x: number, y: number } | null>(null);
 
@@ -284,7 +330,27 @@ export const DrawingCanvas: React.FC = () => {
             return;
         }
 
-        if (activeTool === 'select') return;
+        if (activeTool === 'select') {
+            const stage = e.target.getStage();
+            if (stage && e.target === stage) {
+                // Start Box Selection
+                const pos = getRelativePointerPosition(stage.getLayers()[0]);
+                if (pos) {
+                    setSelectionBox({
+                        startX: pos.x,
+                        startY: pos.y,
+                        x: pos.x,
+                        y: pos.y,
+                        width: 0,
+                        height: 0
+                    });
+                    if (!e.evt.shiftKey) {
+                        setSelectedIds(new Set());
+                    }
+                }
+            }
+            return;
+        };
 
         const stage = e.target.getStage();
         const layer = stage?.getLayers()[0];
@@ -302,30 +368,20 @@ export const DrawingCanvas: React.FC = () => {
             return;
         }
 
-        // FLOOD FILL
+        // FLOOD FILL - Simplified: Just fill the entire canvas with a rectangle
         if (activeTool === 'fill') {
             playSound('pop');
-            const layerDataURL = layer!.toDataURL({
-                pixelRatio: 1, x: 0, y: 0, width: stageSize.width, height: stageSize.height
-            });
-            const tempCanvas = document.createElement('canvas');
-            tempCanvas.width = stageSize.width;
-            tempCanvas.height = stageSize.height;
-            const ctx = tempCanvas.getContext('2d');
 
-            if (ctx) {
-                const imgLocal = new window.Image();
-                imgLocal.src = layerDataURL;
-                imgLocal.onload = () => {
-                    ctx.drawImage(imgLocal, 0, 0);
-                    const localPos = getRelativePointerPosition(layer!);
-                    floodFill(ctx, Math.floor(localPos.x), Math.floor(localPos.y), brushColor);
-                    const filledDataURL = tempCanvas.toDataURL();
-                    addLineToActiveLayer({
-                        tool: 'fill', points: [], color: brushColor, size: 0, filledImage: filledDataURL, x: 0, y: 0
-                    });
-                };
-            }
+            // Instead of complex flood fill algorithm, we'll create a simple filled rectangle
+            // This is persistent and uses minimal storage
+            addLineToActiveLayer({
+                tool: 'fill',
+                points: [0, 0, stageSize.width, stageSize.height], // Full canvas rectangle
+                color: brushColor,
+                size: 0,
+                x: 0,
+                y: 0
+            });
             return;
         }
 
@@ -344,6 +400,17 @@ export const DrawingCanvas: React.FC = () => {
         const layer = stage?.getLayers()[0];
         const point = layer ? getRelativePointerPosition(layer) : null;
 
+        if (selectionBox && point) {
+            setSelectionBox(prev => ({
+                ...prev!,
+                x: Math.min(prev!.startX, point.x),
+                y: Math.min(prev!.startY, point.y),
+                width: Math.abs(point.x - prev!.startX),
+                height: Math.abs(point.y - prev!.startY)
+            }));
+            return;
+        }
+
         if (point) setCursorPos({ x: point.x, y: point.y });
         if (!isDrawing.current || !currentLine || !point) return;
 
@@ -358,6 +425,45 @@ export const DrawingCanvas: React.FC = () => {
     };
 
     const handleMouseUp = () => {
+        if (selectionBox) {
+            // Finalize Box Selection
+            const box = selectionBox;
+            const activeLayer = layers.find(l => l.id === activeLayerId);
+            if (activeLayer) {
+                const newIds = new Set(selectedIds);
+                activeLayer.lines.forEach(line => {
+                    if (!line.id) return;
+                    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+                    const pts = line.points || [];
+                    const ox = line.x || 0;
+                    const oy = line.y || 0;
+
+                    if (pts.length > 0) {
+                        for (let i = 0; i < pts.length; i += 2) {
+                            const px = pts[i] + ox;
+                            const py = pts[i + 1] + oy;
+                            minX = Math.min(minX, px); maxX = Math.max(maxX, px);
+                            minY = Math.min(minY, py); maxY = Math.max(maxY, py);
+                        }
+                    } else {
+                        // Fallback for objects without points (like text if points empty, though text usually has x/y)
+                        minX = ox; maxX = ox + (line.size * 5); // Approximate
+                        minY = oy; maxY = oy + (line.size);
+                    }
+
+                    // Add padding to line bounds for easier selection
+                    const pad = (line.size || 5) / 2;
+                    minX -= pad; minY -= pad; maxX += pad; maxY += pad;
+
+                    const overlaps = !(box.x > maxX || box.x + box.width < minX || box.y > maxY || box.y + box.height < minY);
+                    if (overlaps) newIds.add(line.id);
+                });
+                setSelectedIds(newIds);
+            }
+            setSelectionBox(null);
+            return;
+        }
+
         isDrawing.current = false;
         if (currentLine) {
             playSound('pop');
@@ -423,7 +529,6 @@ export const DrawingCanvas: React.FC = () => {
                                 <CanvasItem
                                     key={line.id || i}
                                     line={line as any}
-                                    stageSize={stageSize}
                                     index={i}
                                     isSelected={selectedIds.has(line.id || '')}
                                     isSelectTool={activeTool === 'select'}
@@ -436,7 +541,6 @@ export const DrawingCanvas: React.FC = () => {
                             {layer.id === activeLayerId && currentLine && (
                                 <CanvasItem
                                     line={{ ...currentLine, id: 'preview' } as any}
-                                    stageSize={stageSize}
                                     index={-1}
                                     isSelected={false}
                                     isSelectTool={false}
@@ -456,6 +560,20 @@ export const DrawingCanvas: React.FC = () => {
                         boundBoxFunc={(oldBox, newBox) => (newBox.width < 5 || newBox.height < 5) ? oldBox : newBox}
                     />
 
+                    {/* SELECTION BOX */}
+                    {selectionBox && (
+                        <Rect
+                            x={selectionBox.x}
+                            y={selectionBox.y}
+                            width={selectionBox.width}
+                            height={selectionBox.height}
+                            fill="rgba(0, 161, 255, 0.3)"
+                            stroke="rgba(0, 161, 255, 0.8)"
+                            strokeWidth={1}
+                            listening={false}
+                        />
+                    )}
+
                     {/* MIRROR PREVIEW */}
                     {activeTool === 'mirror' && currentLine && (
                         <CanvasItem
@@ -464,7 +582,6 @@ export const DrawingCanvas: React.FC = () => {
                                 points: currentLine.points.map((val, i) => i % 2 === 0 ? stageSize.width - val : val),
                                 id: 'preview-mirror'
                             } as any}
-                            stageSize={stageSize}
                             index={-1}
                             isSelected={false}
                             isSelectTool={false}
@@ -547,32 +664,55 @@ export const DrawingCanvas: React.FC = () => {
                     <div
                         className={`absolute z-50 transition-all duration-300 ease-in-out cursor-default ${isRefExpanded
                             ? 'inset-0 bg-black/80 flex items-center justify-center p-8'
-                            : 'top-4 left-4 w-32 h-32 md:w-40 md:h-40 bg-white p-1 rounded-xl shadow-2xl border-2 border-indigo-100'
+                            : 'top-4 left-4 h-32 md:h-40 w-auto bg-white p-1 rounded-xl shadow-2xl border-2 border-indigo-100'
                             }`}
                     >
                         {!isRefExpanded ? (
                             /* THUMBNAIL MODE */
-                            <div className="relative w-full h-full group cursor-pointer" onClick={() => setIsRefExpanded(true)}>
-                                <img
-                                    src={referenceImage}
-                                    alt="Reference"
-                                    className="w-full h-full object-cover rounded-lg"
-                                />
-                                {/* Hover Overlay */}
-                                <div className="absolute inset-0 bg-black/20 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                    <Maximize2 className="text-white drop-shadow-md" size={24} />
+                            <div className="relative h-full w-auto flex flex-col gap-2">
+                                <div className="relative h-full w-auto group cursor-pointer" onClick={() => setIsRefExpanded(true)}>
+                                    <img
+                                        src={referenceImage}
+                                        alt="Reference"
+                                        className="h-full w-auto object-contain rounded-lg"
+                                        style={{ opacity: referenceOpacity }}
+                                    />
+                                    {/* Hover Overlay */}
+                                    <div className="absolute inset-0 bg-black/20 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                        <Maximize2 className="text-white drop-shadow-md" size={24} />
+                                    </div>
+                                    {/* Close Button */}
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setReferenceImage(null);
+                                        }}
+                                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 shadow-md hover:bg-red-600 hover:scale-110 transition-transform"
+                                        title="Close Reference"
+                                    >
+                                        <X size={14} />
+                                    </button>
                                 </div>
-                                {/* Close Button */}
-                                <button
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        setReferenceImage(null);
-                                    }}
-                                    className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 shadow-md hover:bg-red-600 hover:scale-110 transition-transform"
-                                    title="Close Reference"
+                                {/* Opacity Slider */}
+                                <div
+                                    className="bg-white/90 backdrop-blur-sm px-2 py-1.5 rounded-lg shadow-md border border-indigo-100"
+                                    onClick={(e) => e.stopPropagation()}
                                 >
-                                    <X size={14} />
-                                </button>
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-xs font-medium text-gray-600">Opacity</span>
+                                        <input
+                                            type="range"
+                                            min="0.1"
+                                            max="1"
+                                            step="0.1"
+                                            value={referenceOpacity}
+                                            onChange={(e) => setReferenceOpacity(parseFloat(e.target.value))}
+                                            className="flex-1 h-1 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                                            onClick={(e) => e.stopPropagation()}
+                                        />
+                                        <span className="text-xs font-bold text-indigo-600 min-w-[2rem] text-right">{Math.round(referenceOpacity * 100)}%</span>
+                                    </div>
+                                </div>
                             </div>
                         ) : (
                             /* EXPANDED MODE (LIGHTBOX) */

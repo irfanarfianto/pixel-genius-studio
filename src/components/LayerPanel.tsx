@@ -68,7 +68,13 @@ export const LayerPanel: React.FC = () => {
                             className="opacity-0 group-hover:opacity-100 p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
                             onClick={(e) => {
                                 e.stopPropagation();
-                                deleteLayer(layer.id);
+                                if (layers.length === 1) {
+                                    alert('⚠️ Tidak bisa menghapus layer terakhir!');
+                                    return;
+                                }
+                                if (confirm(`Hapus layer "${layer.name}"?\n\nTindakan ini tidak bisa dibatalkan.`)) {
+                                    deleteLayer(layer.id);
+                                }
                             }}
                         >
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>

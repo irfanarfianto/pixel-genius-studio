@@ -277,20 +277,30 @@ export const useDrawingStore = create<DrawingState>()(
         {
             name: 'pixel-genius-storage',
             storage: createJSONStorage(() => localStorage),
-            partialize: (state) => ({
-                layers: state.layers,
-                activeLayerId: state.activeLayerId,
-                historyStack: state.historyStack,
-                historyStep: state.historyStep,
-                brushColor: state.brushColor,
-                brushSize: state.brushSize,
-                activeTool: state.activeTool,
-                userName: state.userName,
-                userColor: state.userColor,
-                stageSize: state.stageSize,
-                referenceImage: state.referenceImage,
-                referenceOpacity: state.referenceOpacity
-            }),
+            partialize: (state) => {
+                // Filter out filledImage from layers to prevent localStorage quota exceeded
+                const cleanLayers = state.layers.map(layer => ({
+                    ...layer,
+                    lines: layer.lines.map(line => {
+                        const { filledImage, ...rest } = line;
+                        return rest;
+                    })
+                }));
+
+                // Don't persist historyStack to save space (it will rebuild on actions)
+                // Don't persist stageSize to allow responsive canvas sizing
+                return {
+                    layers: cleanLayers,
+                    activeLayerId: state.activeLayerId,
+                    brushColor: state.brushColor,
+                    brushSize: state.brushSize,
+                    activeTool: state.activeTool,
+                    userName: state.userName,
+                    userColor: state.userColor,
+                    referenceImage: state.referenceImage,
+                    referenceOpacity: state.referenceOpacity
+                };
+            },
         }
     )
 );

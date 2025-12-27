@@ -1,24 +1,13 @@
-import React, { useEffect, useState } from 'react';
-import { Line, Rect, Circle, Image as KonvaImage, Text, RegularPolygon } from 'react-konva';
+import React from 'react';
+import { Line, Rect, Circle, Text, RegularPolygon } from 'react-konva';
 import type { Line as LineType } from '../store/drawingStore';
 import { getLineOptions } from '../utils/canvasUtils';
 
-// Image Loader Component
-const URLImage = ({ src, x, y, width, height, ...props }: any) => {
-    const [image, setImage] = useState<HTMLImageElement | null>(null);
-    useEffect(() => {
-        if (!src) return;
-        const img = new window.Image();
-        img.src = src;
-        img.onload = () => setImage(img);
-    }, [src]);
-    return <KonvaImage image={image || undefined} x={x} y={y} width={width} height={height} {...props} />;
-};
+
 
 // New Props Interface
 interface CanvasItemProps {
     line: LineType;
-    stageSize: { width: number; height: number };
     index: number;
     isSelected: boolean;
     isSelectTool: boolean;
@@ -29,7 +18,6 @@ interface CanvasItemProps {
 
 export const CanvasItem: React.FC<CanvasItemProps> = React.memo(({
     line,
-    stageSize,
     index,
     isSelected,
     isSelectTool,
@@ -74,18 +62,31 @@ export const CanvasItem: React.FC<CanvasItemProps> = React.memo(({
         );
     }
 
-    // 2. FILL (Image)
-    if (line.tool === 'fill' && line.filledImage) {
+    // 2. FILL (Rectangle - simplified for persistence)
+    if (line.tool === 'fill') {
+        // Validate points array
+        if (!line.points || line.points.length !== 4) {
+            return null; // Skip invalid fill
+        }
+
+        const [x1, y1, x2, y2] = line.points;
+        const width = x2 - x1;
+        const height = y2 - y1;
+
+        // Skip if width or height is invalid
+        if (isNaN(width) || isNaN(height) || width <= 0 || height <= 0) {
+            return null;
+        }
+
         return (
-            <URLImage
+            <Rect
                 key={line.id}
-                src={line.filledImage}
-                x={0}
-                y={0}
-                width={stageSize.width}
-                height={stageSize.height}
+                x={x1}
+                y={y1}
+                width={width}
+                height={height}
+                fill={line.color}
                 listening={false}
-                {...sharedProps}
             />
         );
     }

@@ -1,9 +1,9 @@
 import React, { useRef } from 'react';
 import { useDrawingStore } from '../store/drawingStore';
-import { FolderOpen, Save, Download, Image as ImageIcon } from 'lucide-react';
+import { FolderOpen, Save, Download, Image as ImageIcon, Maximize } from 'lucide-react';
 
 export const Header: React.FC = () => {
-    const { undo, redo, toggleLayerPanel, isLayerPanelOpen, setCanvasAction, loadProject, userName, userColor, historyStep, historyStack, setReferenceImage, referenceImage } = useDrawingStore();
+    const { undo, redo, toggleLayerPanel, isLayerPanelOpen, setCanvasAction, loadProject, userName, userColor, historyStep, historyStack, setReferenceImage, referenceImage, stageSize, setScale, setPosition } = useDrawingStore();
     const fileInputRef = useRef<HTMLInputElement>(null);
     const imageInputRef = useRef<HTMLInputElement>(null);
 
@@ -41,6 +41,25 @@ export const Header: React.FC = () => {
         if (imageInputRef.current) imageInputRef.current.value = '';
     };
 
+    const handleFitToScreen = () => {
+        const container = document.getElementById('canvas-container');
+        if (!container) return;
+
+        const w = container.offsetWidth;
+        const h = container.offsetHeight;
+        const padding = 40; // Space for UI elements
+
+        const scaleX = (w - padding) / stageSize.width;
+        const scaleY = (h - padding) / stageSize.height;
+        const newScale = Math.min(scaleX, scaleY); // Allow > 1 if screen is huge
+
+        const newX = (w - stageSize.width * newScale) / 2;
+        const newY = (h - stageSize.height * newScale) / 2;
+
+        setScale(newScale);
+        setPosition({ x: newX, y: newY });
+    };
+
     const userInitial = userName ? userName.charAt(0).toUpperCase() : 'P';
     const displayColor = userColor || '#6366f1';
 
@@ -69,7 +88,7 @@ export const Header: React.FC = () => {
                 >
                     {userInitial}
                 </div>
-                <div>
+                <div className="hidden md:block">
                     <h1 className="font-bold text-gray-800 text-lg md:text-xl tracking-tight leading-tight">
                         {userName || 'Pixel Genius'}
                     </h1>
@@ -106,7 +125,7 @@ export const Header: React.FC = () => {
                             Export Image
                         </span>
                     </button>
-                    <div className="w-px h-6 bg-gray-300 mx-1"></div>
+                    <div className="w-px h-6 bg-gray-300 mx-1 self-center"></div>
                     <button
                         className={`modern-button w-8 h-8 md:w-10 md:h-10 flex items-center justify-center rounded-lg transition-all relative group
                              ${referenceImage ? 'bg-indigo-100 text-indigo-600' : 'hover:bg-white hover:text-indigo-600 hover:shadow-md text-gray-600'}`}
@@ -120,7 +139,7 @@ export const Header: React.FC = () => {
                 </div>
 
                 {/* Separator */}
-                <div className="w-px h-6 bg-gray-300"></div>
+                <div className="w-px h-6 bg-gray-300 self-center"></div>
 
                 {/* Center Actions (Undo/Redo) */}
                 <div className="flex gap-1 p-1 bg-gray-100/50 rounded-xl">
@@ -156,6 +175,16 @@ export const Header: React.FC = () => {
                         </svg>
                         <span className="absolute invisible group-hover:visible opacity-0 group-hover:opacity-100 transition-all duration-200 z-50 px-2 py-1 bg-gray-800 text-white text-xs font-medium rounded shadow-lg whitespace-nowrap pointer-events-none top-full left-1/2 -translate-x-1/2 mt-2 before:content-[''] before:absolute before:bottom-full before:left-1/2 before:-translate-x-1/2 before:-mb-0 before:border-4 before:border-transparent before:border-b-gray-800">
                             Redo
+                        </span>
+                    </button>
+                    <div className="w-px h-6 bg-gray-300 mx-1 self-center"></div>
+                    <button
+                        className="modern-button w-8 h-8 md:w-10 md:h-10 flex items-center justify-center rounded-lg hover:bg-white hover:text-indigo-600 hover:shadow-md text-gray-600 transition-all relative group"
+                        onClick={handleFitToScreen}
+                    >
+                        <Maximize size={18} />
+                        <span className="absolute invisible group-hover:visible opacity-0 group-hover:opacity-100 transition-all duration-200 z-50 px-2 py-1 bg-gray-800 text-white text-xs font-medium rounded shadow-lg whitespace-nowrap pointer-events-none top-full left-1/2 -translate-x-1/2 mt-2 before:content-[''] before:absolute before:bottom-full before:left-1/2 before:-translate-x-1/2 before:-mb-0 before:border-4 before:border-transparent before:border-b-gray-800">
+                            Fit Screen
                         </span>
                     </button>
                 </div>

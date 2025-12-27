@@ -93,19 +93,57 @@ export const Toolbar: React.FC = () => {
     const [isBrushesOpen, setIsBrushesOpen] = React.useState(false);
     const [isColorsOpen, setIsColorsOpen] = React.useState(false);
 
-    // Tooltip State
+    // Tooltip State with Debounce
     const [tooltipData, setTooltipData] = React.useState<{ x: number, y: number, text: string, align: 'right' | 'top' } | null>(null);
+    const hoverTimeout = React.useRef<any>(null);
 
     const handleMouseEnter = (e: React.MouseEvent, text: string) => {
+        // Clear any existing timeout to prevent double triggers
+        if (hoverTimeout.current) clearTimeout(hoverTimeout.current);
+
         const rect = e.currentTarget.getBoundingClientRect();
         const isDesktop = window.innerWidth >= 768;
         const x = isDesktop ? rect.right + 12 : rect.left + rect.width / 2;
         const y = isDesktop ? rect.top + rect.height / 2 : rect.top - 12;
         const align = isDesktop ? 'right' : 'top';
-        setTooltipData({ x, y, text, align });
+
+        // Add delay (200ms) before showing tooltip - reduced for better responsiveness
+        hoverTimeout.current = setTimeout(() => {
+            setTooltipData({ x, y, text, align });
+        }, 200);
     };
 
-    const handleMouseLeave = () => setTooltipData(null);
+    const handleMouseLeave = () => {
+        if (hoverTimeout.current) clearTimeout(hoverTimeout.current);
+
+        // Add small delay before hiding tooltip to prevent flickering
+        hoverTimeout.current = setTimeout(() => {
+            setTooltipData(null);
+        }, 100);
+    };
+
+    // Auto-close tooltip when tool changes or popups open
+    React.useEffect(() => {
+        setTooltipData(null);
+    }, [activeTool, isShapesOpen, isBrushesOpen, isColorsOpen]);
+
+    // Debounce tool selection to prevent multiple rapid clicks on THE SAME tool
+    const lastClickedTool = React.useRef<Tool | null>(null);
+    const lastClickTime = React.useRef(0);
+    const handleToolSelect = React.useCallback((toolId: Tool) => {
+        const now = Date.now();
+        const timeSinceLastClick = now - lastClickTime.current;
+
+        // Only debounce if clicking the SAME tool repeatedly
+        if (toolId === lastClickedTool.current && timeSinceLastClick < 300) {
+            return; // Ignore rapid clicks on same tool within 300ms
+        }
+
+        lastClickedTool.current = toolId;
+        lastClickTime.current = now;
+        setActiveTool(toolId);
+        closeAllPopups();
+    }, [setActiveTool]);
 
     // Grouping Logic
     const SELECT_TOOL = TOOLS.find(t => t.id === 'select');
@@ -127,7 +165,7 @@ export const Toolbar: React.FC = () => {
                     ? 'bg-indigo-100 text-indigo-700 shadow-inner ring-2 ring-indigo-500 ring-offset-2'
                     : 'hover:bg-gray-100'
                 } ${className}`}
-            onClick={onClick}
+            onClick={(e) => { handleMouseLeave(); onClick(e); }}
             onMouseEnter={(e) => handleMouseEnter(e, tool.label)}
             onMouseLeave={handleMouseLeave}
         >
@@ -154,7 +192,7 @@ export const Toolbar: React.FC = () => {
     return (
         <div className="glass-panel p-1.5 md:p-2 flex flex-row md:flex-col gap-2 md:gap-3 items-center w-full md:w-16 md:h-full shrink-0 overflow-x-auto md:overflow-x-hidden md:overflow-y-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
 
-            <div className="flex flex-row md:flex-col gap-1.5 md:gap-2 shrink-0 w-full items-center">
+            <div className="flex flex-row md:flex-col gap-1.5 md:gap-2 shrink-0 items-center">
                 {SELECT_TOOL && (
                     <ToolButton
                         tool={SELECT_TOOL}
@@ -173,7 +211,7 @@ export const Toolbar: React.FC = () => {
                             }
                             ${isShapesOpen ? 'bg-indigo-50 border-indigo-200 ring-2 ring-indigo-500 ring-offset-2' : ''}
                         `}
-                        onClick={() => { setIsShapesOpen(!isShapesOpen); setIsBrushesOpen(false); setIsColorsOpen(false); }}
+                        onClick={() => { handleMouseLeave(); setIsShapesOpen(!isShapesOpen); setIsBrushesOpen(false); setIsColorsOpen(false); }}
                         onMouseEnter={(e) => handleMouseEnter(e, 'Shapes')}
                         onMouseLeave={handleMouseLeave}
                     >
@@ -197,7 +235,9 @@ export const Toolbar: React.FC = () => {
                                                     ? 'bg-indigo-600 text-white shadow-md scale-105'
                                                     : 'bg-white text-gray-600 hover:bg-indigo-50 hover:text-indigo-600 hover:scale-105'
                                                 }`}
-                                            onClick={() => { setActiveTool(tool.id); closeAllPopups(); }}
+                                            onClick={() => handleToolSelect(tool.id)}
+                                            onMouseEnter={(e) => handleMouseEnter(e, tool.label)}
+                                            onMouseLeave={handleMouseLeave}
                                         >
                                             {tool.icon}
                                         </button>
@@ -218,7 +258,7 @@ export const Toolbar: React.FC = () => {
                             }
                             ${isBrushesOpen ? 'bg-indigo-50 border-indigo-200 ring-2 ring-indigo-500 ring-offset-2' : ''}
                         `}
-                        onClick={() => { setIsBrushesOpen(!isBrushesOpen); setIsShapesOpen(false); setIsColorsOpen(false); }}
+                        onClick={() => { handleMouseLeave(); setIsBrushesOpen(!isBrushesOpen); setIsShapesOpen(false); setIsColorsOpen(false); }}
                         onMouseEnter={(e) => handleMouseEnter(e, 'Brushes')}
                         onMouseLeave={handleMouseLeave}
                     >
@@ -242,7 +282,9 @@ export const Toolbar: React.FC = () => {
                                                     ? 'bg-indigo-600 text-white shadow-md scale-105'
                                                     : 'bg-white text-gray-600 hover:bg-indigo-50 hover:text-indigo-600 hover:scale-105'
                                                 }`}
-                                            onClick={() => { setActiveTool(tool.id); closeAllPopups(); }}
+                                            onClick={() => handleToolSelect(tool.id)}
+                                            onMouseEnter={(e) => handleMouseEnter(e, tool.label)}
+                                            onMouseLeave={handleMouseLeave}
                                         >
                                             {tool.icon}
                                         </button>
@@ -258,7 +300,7 @@ export const Toolbar: React.FC = () => {
                         key={tool.id}
                         tool={tool}
                         isActive={activeTool === tool.id}
-                        onClick={() => { setActiveTool(tool.id); closeAllPopups(); }}
+                        onClick={() => handleToolSelect(tool.id)}
                     />
                 ))}
             </div>
@@ -287,7 +329,7 @@ export const Toolbar: React.FC = () => {
                 <button
                     className={`w-10 h-10 md:w-12 md:h-12 rounded-full border-4 border-white shadow-sm ring-1 ring-gray-200 transition-transform group relative ${isColorsOpen ? 'scale-110 ring-indigo-300' : 'hover:scale-105'}`}
                     style={{ backgroundColor: brushColor }}
-                    onClick={() => { setIsColorsOpen(!isColorsOpen); setIsShapesOpen(false); setIsBrushesOpen(false); }}
+                    onClick={() => { handleMouseLeave(); setIsColorsOpen(!isColorsOpen); setIsShapesOpen(false); setIsBrushesOpen(false); }}
                     onMouseEnter={(e) => handleMouseEnter(e, 'Colors')}
                     onMouseLeave={handleMouseLeave}
                 />
@@ -321,6 +363,8 @@ export const Toolbar: React.FC = () => {
                                             }`}
                                         style={{ backgroundColor: color }}
                                         onClick={() => { setBrushColor(color); closeAllPopups(); }}
+                                        onMouseEnter={(e) => handleMouseEnter(e, color)}
+                                        onMouseLeave={handleMouseLeave}
                                     />
                                 ))}
                             </div>
@@ -330,7 +374,7 @@ export const Toolbar: React.FC = () => {
             </div>
             {tooltipData && createPortal(
                 <div
-                    className="fixed z-[9999] px-2 py-1 bg-gray-800 text-white text-xs font-medium rounded shadow-lg whitespace-nowrap pointer-events-none animate-in fade-in duration-200"
+                    className="fixed z-[10000] px-2 py-1 bg-gray-800 text-white text-xs font-medium rounded shadow-lg whitespace-nowrap pointer-events-none animate-in fade-in duration-200"
                     style={{
                         left: tooltipData.x,
                         top: tooltipData.y,
