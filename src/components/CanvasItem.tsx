@@ -158,17 +158,6 @@ export const CanvasItem: React.FC<CanvasItemProps> = React.memo(({
     }
 
     // 4. STANDARD LINES & FREEHAND (Brush, Line Tool)
-    const baseOptions = getLineOptions(line.tool, line.color, line.points, line.size);
-
-    // VISUALIZE ERASER IN SELECT MODE
-    const finalOptions = (isSelectTool && line.tool === 'eraser') ? {
-        ...baseOptions,
-        stroke: '#ef4444', // Red 500
-        opacity: 0.5,
-        globalCompositeOperation: 'source-over',
-        dash: [5, 5]
-    } : baseOptions;
-
     return (
         <Line
             key={line.id}
@@ -178,7 +167,7 @@ export const CanvasItem: React.FC<CanvasItemProps> = React.memo(({
             rotation={line.rotation || 0}
             scaleX={line.scaleX || 1}
             scaleY={line.scaleY || 1}
-            {...finalOptions}
+            {...getLineOptions(line.tool, line.color, line.points, line.size)}
             {...sharedProps}
         />
     );

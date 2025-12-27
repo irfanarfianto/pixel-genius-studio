@@ -66,6 +66,48 @@ export const DrawingCanvas: React.FC = () => {
             } else {
                 next.clear();
                 next.add(id);
+
+                // AUTO-SELECT INTERSECTING ERASERS
+                const state = useDrawingStore.getState();
+                const activeLayer = state.layers.find(l => l.id === state.activeLayerId);
+                const targetLine = activeLayer?.lines.find(l => l.id === id);
+
+                if (targetLine && activeLayer && targetLine.tool !== 'eraser') {
+                    // Helper for BBox
+                    const getBounds = (line: any) => {
+                        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+                        const offsetX = line.x || 0;
+                        const offsetY = line.y || 0;
+                        const pts = line.points || [];
+                        if (pts.length === 0) return { x: 0, y: 0, width: 0, height: 0 };
+
+                        for (let i = 0; i < pts.length; i += 2) {
+                            const px = pts[i] + offsetX;
+                            const py = pts[i + 1] + offsetY;
+                            minX = Math.min(minX, px);
+                            maxX = Math.max(maxX, px);
+                            minY = Math.min(minY, py);
+                            maxY = Math.max(maxY, py);
+                        }
+                        const pad = (line.size || 5) / 2;
+                        return { x: minX - pad, y: minY - pad, width: maxX - minX + pad * 2, height: maxY - minY + pad * 2 };
+                    };
+
+                    const isIntersect = (r1: any, r2: any) => {
+                        return !(r2.x > r1.x + r1.width || r2.x + r2.width < r1.x || r2.y > r1.y + r1.height || r2.y + r2.height < r1.y);
+                    };
+
+                    const targetBounds = getBounds(targetLine);
+
+                    activeLayer.lines.forEach(l => {
+                        if (l.tool === 'eraser' && l.id !== id) {
+                            const eraserBounds = getBounds(l);
+                            if (isIntersect(targetBounds, eraserBounds)) {
+                                next.add(l.id!);
+                            }
+                        }
+                    });
+                }
             }
             return next;
         });
