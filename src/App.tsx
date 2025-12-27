@@ -5,6 +5,7 @@ import { DrawingCanvas } from './components/DrawingCanvas';
 import { LayerPanel } from './components/LayerPanel';
 import { useDrawingStore } from './store/drawingStore';
 import { WelcomeModal } from './components/WelcomeModal';
+import { PWAInstallPrompt } from './components/PWAInstallPrompt';
 
 const App: React.FC = () => {
   const { isLayerPanelOpen } = useDrawingStore();
@@ -24,6 +25,9 @@ const App: React.FC = () => {
     <div className="h-screen w-screen bg-gray-50 flex flex-col font-sans text-gray-900 overflow-hidden select-none">
       {/* Welcome Modal */}
       <WelcomeModal />
+
+      {/* PWA Install Prompt */}
+      <PWAInstallPrompt />
 
       {/* Header - Fixed at Top */}
       <Header />

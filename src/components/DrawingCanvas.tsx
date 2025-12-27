@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { Stage, Layer, Rect, Circle, Text, Transformer, Group } from 'react-konva';
+import { Stage, Layer, Rect, Circle, Text, Transformer, Group, Image } from 'react-konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
 import Konva from 'konva';
 import { useDrawingStore } from '../store/drawingStore';
@@ -55,6 +55,18 @@ export const DrawingCanvas: React.FC = () => {
     // Reference Image UI State
     const [isRefExpanded, setIsRefExpanded] = useState(false);
     const { setReferenceImage } = useDrawingStore(); // Ensure we can close it
+
+    // Load Reference Image for Konva
+    const [refImgObj, setRefImgObj] = useState<HTMLImageElement | null>(null);
+    useEffect(() => {
+        if (referenceImage) {
+            const img = new window.Image();
+            img.src = referenceImage;
+            img.onload = () => setRefImgObj(img);
+        } else {
+            setRefImgObj(null);
+        }
+    }, [referenceImage]);
 
     // Transformer Logic
     useEffect(() => {
@@ -525,8 +537,6 @@ export const DrawingCanvas: React.FC = () => {
                     <Rect x={0} y={0} width={stageSize.width} height={stageSize.height} fill="white" listening={false} />
                 </Layer>
 
-                {/* REFERENCE IMAGE LAYER */}
-
 
                 {layers.map((layer) => (
                     layer.visible && (
@@ -558,6 +568,21 @@ export const DrawingCanvas: React.FC = () => {
                         </Layer>
                     )
                 ))}
+
+                {/* REFERENCE IMAGE LAYER (ALWAYS ON TOP) */}
+                {referenceImage && refImgObj && (
+                    <Layer listening={false}>
+                        <Image
+                            image={refImgObj}
+                            x={10}
+                            y={10}
+                            height={150}
+                            width={(150 * refImgObj.width) / refImgObj.height}
+                            opacity={referenceOpacity}
+                            listening={false}
+                        />
+                    </Layer>
+                )}
 
                 {/* COMBINED OVERLAY LAYER: Transformer, Preview, Cursor */}
                 <Layer>
@@ -664,80 +689,44 @@ export const DrawingCanvas: React.FC = () => {
                 )
             }
 
-            {/* REFERENCE IMAGE OVERLAY */}
+            {/* REFERENCE IMAGE CONTROLS ONLY */}
             {
                 referenceImage && (
-                    <div
-                        className={`absolute z-50 transition-all duration-300 ease-in-out cursor-default ${isRefExpanded
-                            ? 'inset-0 bg-black/80 flex items-center justify-center p-8'
-                            : 'top-4 left-4 h-32 md:h-40 w-auto bg-white p-1 rounded-xl shadow-2xl border-2 border-indigo-100'
-                            }`}
-                    >
-                        {!isRefExpanded ? (
-                            /* THUMBNAIL MODE */
-                            <div className="relative h-full w-auto flex flex-col gap-2">
-                                <div className="relative h-full w-auto group cursor-pointer" onClick={() => setIsRefExpanded(true)}>
-                                    <img
-                                        src={referenceImage}
-                                        alt="Reference"
-                                        className="h-full w-auto object-contain rounded-lg"
-                                        style={{ opacity: referenceOpacity }}
-                                    />
-                                    {/* Hover Overlay */}
-                                    <div className="absolute inset-0 bg-black/20 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                        <Maximize2 className="text-white drop-shadow-md" size={24} />
-                                    </div>
-                                    {/* Close Button */}
-                                    <button
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            setReferenceImage(null);
-                                        }}
-                                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 shadow-md hover:bg-red-600 hover:scale-110 transition-transform"
-                                        title="Close Reference"
-                                    >
-                                        <X size={14} />
-                                    </button>
-                                </div>
-                                {/* Opacity Slider */}
-                                <div
-                                    className="bg-white/90 backdrop-blur-sm px-2 py-1.5 rounded-lg shadow-md border border-indigo-100"
+                    <div className="absolute top-4 right-4 z-50 flex flex-col gap-2 pointer-events-auto">
+                        {/* Close Button & Title */}
+                        <div className="bg-white/90 backdrop-blur-sm p-2 rounded-lg shadow-md border border-indigo-100 flex items-center gap-2">
+                            <span className="text-xs font-bold text-indigo-600 uppercase tracking-wider px-1">Ref Image</span>
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setReferenceImage(null);
+                                }}
+                                className="bg-red-50 text-red-500 rounded p-1 hover:bg-red-100 transition-colors"
+                                title="Close Reference"
+                            >
+                                <X size={14} />
+                            </button>
+                        </div>
+
+                        {/* Opacity Slider */}
+                        <div
+                            className="bg-white/90 backdrop-blur-sm px-2 py-1.5 rounded-lg shadow-md border border-indigo-100"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <div className="flex items-center gap-2">
+                                <span className="text-xs font-medium text-gray-600">Opacity</span>
+                                <input
+                                    type="range"
+                                    min="0.1"
+                                    max="1"
+                                    step="0.1"
+                                    value={referenceOpacity}
+                                    onChange={(e) => setReferenceOpacity(parseFloat(e.target.value))}
+                                    className="flex-1 h-1 bg-gray-200 rounded-lg appearance-none cursor-pointer w-24"
                                     onClick={(e) => e.stopPropagation()}
-                                >
-                                    <div className="flex items-center gap-2">
-                                        <span className="text-xs font-medium text-gray-600">Opacity</span>
-                                        <input
-                                            type="range"
-                                            min="0.1"
-                                            max="1"
-                                            step="0.1"
-                                            value={referenceOpacity}
-                                            onChange={(e) => setReferenceOpacity(parseFloat(e.target.value))}
-                                            className="flex-1 h-1 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-                                            onClick={(e) => e.stopPropagation()}
-                                        />
-                                        <span className="text-xs font-bold text-indigo-600 min-w-[2rem] text-right">{Math.round(referenceOpacity * 100)}%</span>
-                                    </div>
-                                </div>
-                            </div>
-                        ) : (
-                            /* EXPANDED MODE (LIGHTBOX) */
-                            <div className="relative flex items-center justify-center">
-                                <img
-                                    src={referenceImage}
-                                    alt="Reference Full"
-                                    className="object-contain rounded-lg shadow-2xl"
-                                    style={{ maxWidth: '90vw', maxHeight: '85vh' }}
                                 />
-                                <button
-                                    onClick={() => setIsRefExpanded(false)}
-                                    className="absolute -top-4 -right-4 md:top-4 md:right-4 bg-white text-gray-800 p-2 rounded-full shadow-lg hover:bg-gray-100 transition-transform hover:scale-110"
-                                    title="Minimize"
-                                >
-                                    <Minimize2 size={24} />
-                                </button>
                             </div>
-                        )}
+                        </div>
                     </div>
                 )
             }
