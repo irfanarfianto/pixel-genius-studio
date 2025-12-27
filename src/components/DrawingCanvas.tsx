@@ -40,6 +40,11 @@ export const DrawingCanvas: React.FC = () => {
     const transformerRef = useRef<Konva.Transformer>(null);
 
     const isDrawing = useRef(false);
+    const isPanning = useRef(false);
+    const lastPanPos = useRef({ x: 0, y: 0 });
+    const lastDist = useRef<number>(0); // Track pinch distance
+    const [isSpacePressed, setIsSpacePressed] = useState(false); // For Space+Drag panning
+
     const [currentLine, setCurrentLine] = useState<{
         tool: string;
         points: number[];
@@ -47,6 +52,7 @@ export const DrawingCanvas: React.FC = () => {
         size: number;
         mirrorLines?: number[][];
     } | null>(null);
+
 
     // Selection State
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -278,6 +284,9 @@ export const DrawingCanvas: React.FC = () => {
     // Handle Delete Key
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.code === 'Space' && !e.repeat && document.activeElement?.tagName !== 'INPUT' && document.activeElement?.tagName !== 'TEXTAREA') {
+                setIsSpacePressed(true);
+            }
             if ((e.key === 'Delete' || e.key === 'Backspace') && selectedIds.size > 0) {
                 const activeTag = document.activeElement?.tagName.toLowerCase();
                 if (activeTag === 'input' || activeTag === 'textarea') return;
@@ -287,8 +296,16 @@ export const DrawingCanvas: React.FC = () => {
                 setSelectedIds(new Set());
             }
         };
+        const handleKeyUp = (e: KeyboardEvent) => {
+            if (e.code === 'Space') setIsSpacePressed(false);
+        }
+
         window.addEventListener('keydown', handleKeyDown);
-        return () => window.removeEventListener('keydown', handleKeyDown);
+        window.addEventListener('keyup', handleKeyUp);
+        return () => {
+            window.removeEventListener('keydown', handleKeyDown);
+            window.removeEventListener('keyup', handleKeyUp);
+        };
     }, [selectedIds, deleteLines]);
 
     const finalizeText = () => {
@@ -322,28 +339,68 @@ export const DrawingCanvas: React.FC = () => {
         e.evt.preventDefault();
         const stage = e.target.getStage();
         if (!stage) return;
-        const oldScale = stage.scaleX();
-        const pointer = stage.getPointerPosition();
-        if (!pointer) return;
 
-        const mousePointTo = {
-            x: (pointer.x - stage.x()) / oldScale,
-            y: (pointer.y - stage.y()) / oldScale,
-        };
+        // ZOOM (Ctrl + Wheel)
+        if (e.evt.ctrlKey) {
+            const oldScale = stage.scaleX();
+            const pointer = stage.getPointerPosition();
+            if (!pointer) return;
 
-        let newScale = e.evt.deltaY < 0 ? oldScale * 1.1 : oldScale / 1.1;
-        newScale = Math.max(0.1, Math.min(newScale, 5));
+            const mousePointTo = {
+                x: (pointer.x - stage.x()) / oldScale,
+                y: (pointer.y - stage.y()) / oldScale,
+            };
 
-        const newPos = {
-            x: pointer.x - mousePointTo.x * newScale,
-            y: pointer.y - mousePointTo.y * newScale,
-        };
-        setScale(newScale);
-        setPosition(newPos);
+            let newScale = e.evt.deltaY < 0 ? oldScale * 1.1 : oldScale / 1.1;
+            newScale = Math.max(0.1, Math.min(newScale, 5));
+
+            const newPos = {
+                x: pointer.x - mousePointTo.x * newScale,
+                y: pointer.y - mousePointTo.y * newScale,
+            };
+            setScale(newScale);
+            setPosition(newPos);
+        } else {
+            // PAN (Regular Scroll / 2-finger swipe)
+            setPosition({
+                x: position.x - e.evt.deltaX,
+                y: position.y - e.evt.deltaY
+            });
+        }
     };
 
     const handleMouseDown = (e: KonvaEventObject<MouseEvent | TouchEvent>) => {
-        if (e.evt.type === 'mousedown' && (e.evt as MouseEvent).button === 1) return;
+        const evt = e.evt;
+        const isTouch = 'touches' in evt;
+        const isMiddleClick = !isTouch && (evt as MouseEvent).button === 1;
+
+        // 2-FINGER TOUCH (Pan Start)
+        if (isTouch && evt.touches.length === 2) {
+            isPanning.current = true;
+            isDrawing.current = false;
+
+            const p1 = evt.touches[0];
+            const p2 = evt.touches[1];
+            // Initialize lastPanPos to the center of two fingers
+            lastPanPos.current = {
+                x: (p1.clientX + p2.clientX) / 2,
+                y: (p1.clientY + p2.clientY) / 2
+            };
+            return;
+        }
+
+        // DESKTOP PAN: Middle Click or Spacebar + Click
+        if (isMiddleClick || isSpacePressed) {
+            isPanning.current = true;
+            const clientX = isTouch ? evt.touches[0].clientX : (evt as MouseEvent).clientX;
+            const clientY = isTouch ? evt.touches[0].clientY : (evt as MouseEvent).clientY;
+
+            lastPanPos.current = { x: clientX, y: clientY };
+            const container = e.target.getStage()?.container();
+            if (container) container.style.cursor = 'grabbing';
+            return;
+        }
+
         if (isFinalizing.current) return;
 
         checkDeselect(e);
@@ -422,6 +479,34 @@ export const DrawingCanvas: React.FC = () => {
     };
 
     const handleMouseMove = (e: KonvaEventObject<MouseEvent | TouchEvent>) => {
+        // PANNING UPDATE
+        if (isPanning.current) {
+            const evt = e.evt;
+            const isTouch = 'touches' in evt;
+
+            let clientX, clientY;
+
+            if (isTouch && evt.touches.length === 2) {
+                // 2-Finger Pan: Calculate center movement
+                e.evt.preventDefault(); // Prevent browser native behavior
+                const p1 = evt.touches[0];
+                const p2 = evt.touches[1];
+                clientX = (p1.clientX + p2.clientX) / 2;
+                clientY = (p1.clientY + p2.clientY) / 2;
+            } else {
+                // Single pointer pan
+                const touch = isTouch ? (evt.touches[0] || evt.changedTouches[0]) : null;
+                clientX = isTouch && touch ? touch.clientX : (evt as MouseEvent).clientX;
+                clientY = isTouch && touch ? touch.clientY : (evt as MouseEvent).clientY;
+            }
+
+            const dx = clientX - lastPanPos.current.x;
+            const dy = clientY - lastPanPos.current.y;
+            lastPanPos.current = { x: clientX, y: clientY };
+            setPosition({ x: position.x + dx, y: position.y + dy });
+            return;
+        }
+
         const stage = e.target.getStage();
         const layer = stage?.getLayers()[0];
         const point = layer ? getRelativePointerPosition(layer) : null;
@@ -451,6 +536,16 @@ export const DrawingCanvas: React.FC = () => {
     };
 
     const handleMouseUp = () => {
+        if (isPanning.current) {
+            isPanning.current = false;
+            // Restore cursor
+            if (stageRef.current) {
+                const cursor = activeTool === 'text' ? 'text' : activeTool === 'eraser' ? 'none' : 'default';
+                stageRef.current.container().style.cursor = cursor;
+            }
+            return;
+        }
+
         if (selectionBox) {
             // Finalize Box Selection
             const box = selectionBox;
