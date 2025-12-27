@@ -253,6 +253,7 @@ export const DrawingCanvas: React.FC = () => {
     } | null>(null);
 
     const isFinalizing = useRef(false);
+    const textInputJustCreated = useRef(false); // Track if we just created text input
     const textareaRef = useRef<HTMLTextAreaElement>(null);
 
     useEffect(() => {
@@ -325,10 +326,14 @@ export const DrawingCanvas: React.FC = () => {
 
         checkDeselect(e);
 
-        if (textInput) {
+        // If text input exists, finalize it (but not if we just created it this frame)
+        if (textInput && !textInputJustCreated.current) {
             finalizeText();
             return;
         }
+
+        // Reset the flag after checking
+        textInputJustCreated.current = false;
 
         if (activeTool === 'select') {
             const stage = e.target.getStage();
@@ -362,6 +367,7 @@ export const DrawingCanvas: React.FC = () => {
             const pointer = stage.getPointerPosition();
             if (!pointer) return;
             isFinalizing.current = false;
+            textInputJustCreated.current = true; // Mark that we just created it
             setTextInput({
                 x: pos.x, y: pos.y, domX: pointer.x, domY: pointer.y, text: ""
             });

@@ -141,8 +141,12 @@ export const Toolbar: React.FC = () => {
 
         lastClickedTool.current = toolId;
         lastClickTime.current = now;
-        setActiveTool(toolId);
+
+        // Close all popups FIRST to ensure clean visual state
         closeAllPopups();
+
+        // Then set the active tool
+        setActiveTool(toolId);
     }, [setActiveTool]);
 
     // Grouping Logic
@@ -158,20 +162,27 @@ export const Toolbar: React.FC = () => {
     const currentShape = SHAPE_TOOLS.find(t => t.id === activeTool) || SHAPE_TOOLS.find(t => t.id === 'rectangle');
     const currentBrush = BRUSH_TOOLS.find(t => t.id === activeTool) || BRUSH_TOOLS.find(t => t.id === 'brush');
 
-    const ToolButton = ({ tool, isActive, onClick, className = "" }: any) => (
-        <button
-            className={`modern-button w-10 h-10 md:w-12 md:h-12 rounded-xl flex items-center justify-center text-xl md:text-2xl transition-all relative group shrink-0
-                ${isActive
-                    ? 'bg-indigo-100 text-indigo-700 shadow-inner ring-2 ring-indigo-500 ring-offset-2'
-                    : 'hover:bg-gray-100'
-                } ${className}`}
-            onClick={(e) => { handleMouseLeave(); onClick(e); }}
-            onMouseEnter={(e) => handleMouseEnter(e, tool.label)}
-            onMouseLeave={handleMouseLeave}
-        >
-            {tool.icon}
-        </button>
-    );
+    const ToolButton = ({ tool, isActive, onClick, className = "" }: any) => {
+        // Create explicit handler to avoid closure issues
+        const handleEnter = React.useCallback((e: React.MouseEvent) => {
+            handleMouseEnter(e, tool.label);
+        }, [tool.label]);
+
+        return (
+            <button
+                className={`modern-button w-10 h-10 md:w-12 md:h-12 rounded-xl flex items-center justify-center text-xl md:text-2xl transition-all relative group shrink-0
+                    ${isActive
+                        ? 'bg-indigo-100 text-indigo-700 shadow-inner ring-2 ring-indigo-500 ring-offset-2'
+                        : 'hover:bg-gray-100'
+                    } ${className}`}
+                onClick={(e) => { handleMouseLeave(); onClick(e); }}
+                onMouseEnter={handleEnter}
+                onMouseLeave={handleMouseLeave}
+            >
+                <span className="pointer-events-none">{tool.icon}</span>
+            </button>
+        );
+    };
 
     const closeAllPopups = () => {
         setIsShapesOpen(false);
@@ -195,14 +206,15 @@ export const Toolbar: React.FC = () => {
             <div className="flex flex-row md:flex-col gap-1.5 md:gap-2 shrink-0 items-center">
                 {SELECT_TOOL && (
                     <ToolButton
+                        key="select-tool"
                         tool={SELECT_TOOL}
                         isActive={activeTool === 'select'}
-                        onClick={() => { setActiveTool('select'); closeAllPopups(); }}
+                        onClick={() => handleToolSelect('select')}
                     />
                 )}
 
                 {/* SHAPES */}
-                <div className="relative group/shape">
+                <div className="relative group/shape" key="shapes-group">
                     <button
                         className={`modern-button w-10 h-10 md:w-12 md:h-12 rounded-xl flex items-center justify-center text-xl md:text-2xl transition-all relative shrink-0 group
                             ${isShapeActive && !isShapesOpen
@@ -215,8 +227,8 @@ export const Toolbar: React.FC = () => {
                         onMouseEnter={(e) => handleMouseEnter(e, 'Shapes')}
                         onMouseLeave={handleMouseLeave}
                     >
-                        {currentShape?.icon}
-                        <div className={`absolute bottom-1 right-1 w-1.5 h-1.5 rounded-full transition-colors ${isShapeActive ? 'bg-indigo-500' : 'bg-gray-400'}`}></div>
+                        <span className="pointer-events-none">{currentShape?.icon}</span>
+                        <div className="absolute bottom-1 right-1 w-1.5 h-1.5 rounded-full transition-colors pointer-events-none ${isShapeActive ? 'bg-indigo-500' : 'bg-gray-400'}"></div>
                     </button>
                     {isShapesOpen && (
                         <RenderPopup>
@@ -249,7 +261,7 @@ export const Toolbar: React.FC = () => {
                 </div>
 
                 {/* BRUSHES */}
-                <div className="relative group/brush">
+                <div className="relative group/brush" key="brushes-group">
                     <button
                         className={`modern-button w-10 h-10 md:w-12 md:h-12 rounded-xl flex items-center justify-center text-xl md:text-2xl transition-all relative shrink-0 group
                             ${isBrushActive && !isBrushesOpen
@@ -262,8 +274,8 @@ export const Toolbar: React.FC = () => {
                         onMouseEnter={(e) => handleMouseEnter(e, 'Brushes')}
                         onMouseLeave={handleMouseLeave}
                     >
-                        {currentBrush?.icon}
-                        <div className={`absolute bottom-1 right-1 w-1.5 h-1.5 rounded-full transition-colors ${isBrushActive ? 'bg-indigo-500' : 'bg-gray-400'}`}></div>
+                        <span className="pointer-events-none">{currentBrush?.icon}</span>
+                        <div className="absolute bottom-1 right-1 w-1.5 h-1.5 rounded-full transition-colors pointer-events-none ${isBrushActive ? 'bg-indigo-500' : 'bg-gray-400'}"></div>
                     </button>
                     {isBrushesOpen && (
                         <RenderPopup>
