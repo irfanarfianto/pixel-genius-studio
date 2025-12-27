@@ -64,6 +64,7 @@ interface DrawingState {
     updateLayerOpacity: (id: string, opacity: number) => void;
     addLineToActiveLayer: (line: Line) => void;
     updateLineInActiveLayer: (lineIndex: number, newAttrs: Partial<Line>) => void; // New Action
+    deleteLines: (ids: string[]) => void;
 
     // History
     historyStep: number;
@@ -186,6 +187,22 @@ export const useDrawingStore = create<DrawingState>()(
                             newLines[lineIndex] = { ...newLines[lineIndex], ...newAttrs };
                         }
                         return { ...layer, lines: newLines };
+                    }
+                    return layer;
+                });
+                set({ layers });
+                get().saveHistory();
+            },
+
+            deleteLines: (ids) => {
+                const activeLayerId = get().activeLayerId;
+                const idsSet = new Set(ids);
+                const layers = get().layers.map((layer) => {
+                    if (layer.id === activeLayerId) {
+                        return {
+                            ...layer,
+                            lines: layer.lines.filter(l => !l.id || !idsSet.has(l.id))
+                        };
                     }
                     return layer;
                 });

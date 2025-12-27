@@ -26,7 +26,8 @@ export const DrawingCanvas: React.FC = () => {
         position,
         setPosition,
         canvasAction,
-        setCanvasAction
+        setCanvasAction,
+        deleteLines
     } = useDrawingStore();
 
     const { playSound } = useSound();
@@ -204,6 +205,22 @@ export const DrawingCanvas: React.FC = () => {
     useEffect(() => {
         if (textInput && textareaRef.current) textareaRef.current.focus();
     }, [textInput]);
+
+    // Handle Delete Key
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if ((e.key === 'Delete' || e.key === 'Backspace') && selectedIds.size > 0) {
+                const activeTag = document.activeElement?.tagName.toLowerCase();
+                if (activeTag === 'input' || activeTag === 'textarea') return;
+
+                e.preventDefault();
+                deleteLines(Array.from(selectedIds));
+                setSelectedIds(new Set());
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [selectedIds, deleteLines]);
 
     const finalizeText = () => {
         if (isFinalizing.current) return;
