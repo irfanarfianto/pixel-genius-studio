@@ -67,8 +67,8 @@ export const WelcomeModal: React.FC = () => {
                                     style={{
                                         backgroundColor: color,
                                         borderColor: selectedColor === color ? color : 'transparent',
-                                        ringColor: color
-                                    }}
+                                        '--tw-ring-color': color
+                                    } as any}
                                 />
                             ))}
                         </div>
