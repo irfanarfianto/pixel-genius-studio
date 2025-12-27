@@ -6,7 +6,7 @@ import { useDrawingStore } from '../store/drawingStore';
 import { useSound } from '../hooks/useSound';
 import { getRelativePointerPosition } from '../utils/canvasUtils';
 import { CanvasItem } from './CanvasItem';
-import { Maximize2, Minimize2, X } from 'lucide-react';
+import { X } from 'lucide-react';
 
 export const DrawingCanvas: React.FC = () => {
     // ... (rest of the file until the overlay layer)
@@ -52,8 +52,6 @@ export const DrawingCanvas: React.FC = () => {
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [selectionBox, setSelectionBox] = useState<{ x: number, y: number, width: number, height: number, startX: number, startY: number } | null>(null);
 
-    // Reference Image UI State
-    const [isRefExpanded, setIsRefExpanded] = useState(false);
     const { setReferenceImage } = useDrawingStore(); // Ensure we can close it
 
     // Load Reference Image for Konva
