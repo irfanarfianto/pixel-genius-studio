@@ -93,43 +93,19 @@ export const Toolbar: React.FC = () => {
     const [isBrushesOpen, setIsBrushesOpen] = React.useState(false);
     const [isColorsOpen, setIsColorsOpen] = React.useState(false);
 
-    // Tooltip State with Debounce
-    const [tooltipData, setTooltipData] = React.useState<{ x: number, y: number, text: string, align: 'right' | 'top' } | null>(null);
-    const hoverTimeout = React.useRef<any>(null);
+    // Tooltip logic removed
 
-    const handleMouseEnter = (e: React.MouseEvent, text: string) => {
-        // Clear any existing timeout to prevent double triggers
-        if (hoverTimeout.current) clearTimeout(hoverTimeout.current);
-
-        const rect = e.currentTarget.getBoundingClientRect();
-        const isDesktop = window.innerWidth >= 768;
-        const x = isDesktop ? rect.right + 12 : rect.left + rect.width / 2;
-        const y = isDesktop ? rect.top + rect.height / 2 : rect.top - 12;
-        const align = isDesktop ? 'right' : 'top';
-
-        // Add delay (200ms) before showing tooltip - reduced for better responsiveness
-        hoverTimeout.current = setTimeout(() => {
-            setTooltipData({ x, y, text, align });
-        }, 200);
+    const closeAllPopups = () => {
+        setIsShapesOpen(false);
+        setIsBrushesOpen(false);
+        setIsColorsOpen(false);
     };
 
-    const handleMouseLeave = () => {
-        if (hoverTimeout.current) clearTimeout(hoverTimeout.current);
-
-        // Add small delay before hiding tooltip to prevent flickering
-        hoverTimeout.current = setTimeout(() => {
-            setTooltipData(null);
-        }, 100);
-    };
-
-    // Auto-close tooltip when tool changes or popups open
-    React.useEffect(() => {
-        setTooltipData(null);
-    }, [activeTool, isShapesOpen, isBrushesOpen, isColorsOpen]);
+    // Keep track of the last clicked tool to prevent re-clicks
+    const lastClickedTool = React.useRef<Tool | null>(null);
+    const lastClickTime = React.useRef<number>(0);
 
     // Debounce tool selection to prevent multiple rapid clicks on THE SAME tool
-    const lastClickedTool = React.useRef<Tool | null>(null);
-    const lastClickTime = React.useRef(0);
     const handleToolSelect = React.useCallback((toolId: Tool) => {
         const now = Date.now();
         const timeSinceLastClick = now - lastClickTime.current;
@@ -163,11 +139,6 @@ export const Toolbar: React.FC = () => {
     const currentBrush = BRUSH_TOOLS.find(t => t.id === activeTool) || BRUSH_TOOLS.find(t => t.id === 'brush');
 
     const ToolButton = ({ tool, isActive, onClick, className = "" }: any) => {
-        // Create explicit handler to avoid closure issues
-        const handleEnter = React.useCallback((e: React.MouseEvent) => {
-            handleMouseEnter(e, tool.label);
-        }, [tool.label]);
-
         return (
             <button
                 className={`modern-button w-10 h-10 md:w-12 md:h-12 rounded-xl flex items-center justify-center text-xl md:text-2xl transition-all relative group shrink-0
@@ -175,20 +146,14 @@ export const Toolbar: React.FC = () => {
                         ? 'bg-indigo-100 text-indigo-700 shadow-inner ring-2 ring-indigo-500 ring-offset-2'
                         : 'hover:bg-gray-100'
                     } ${className}`}
-                onClick={(e) => { handleMouseLeave(); onClick(e); }}
-                onMouseEnter={handleEnter}
-                onMouseLeave={handleMouseLeave}
+                onClick={onClick}
             >
                 <span className="pointer-events-none">{tool.icon}</span>
             </button>
         );
     };
 
-    const closeAllPopups = () => {
-        setIsShapesOpen(false);
-        setIsBrushesOpen(false);
-        setIsColorsOpen(false);
-    };
+
 
     // Helper to render popup via Portal
     const RenderPopup = ({ children }: { children: React.ReactNode }) => {
@@ -223,9 +188,7 @@ export const Toolbar: React.FC = () => {
                             }
                             ${isShapesOpen ? 'bg-indigo-50 border-indigo-200 ring-2 ring-indigo-500 ring-offset-2' : ''}
                         `}
-                        onClick={() => { handleMouseLeave(); setIsShapesOpen(!isShapesOpen); setIsBrushesOpen(false); setIsColorsOpen(false); }}
-                        onMouseEnter={(e) => handleMouseEnter(e, 'Shapes')}
-                        onMouseLeave={handleMouseLeave}
+                        onClick={() => { setIsShapesOpen(!isShapesOpen); setIsBrushesOpen(false); setIsColorsOpen(false); }}
                     >
                         <span className="pointer-events-none">{currentShape?.icon}</span>
                         <div className="absolute bottom-1 right-1 w-1.5 h-1.5 rounded-full transition-colors pointer-events-none ${isShapeActive ? 'bg-indigo-500' : 'bg-gray-400'}"></div>
@@ -248,8 +211,6 @@ export const Toolbar: React.FC = () => {
                                                     : 'bg-white text-gray-600 hover:bg-indigo-50 hover:text-indigo-600 hover:scale-105'
                                                 }`}
                                             onClick={() => handleToolSelect(tool.id)}
-                                            onMouseEnter={(e) => handleMouseEnter(e, tool.label)}
-                                            onMouseLeave={handleMouseLeave}
                                         >
                                             {tool.icon}
                                         </button>
@@ -270,9 +231,7 @@ export const Toolbar: React.FC = () => {
                             }
                             ${isBrushesOpen ? 'bg-indigo-50 border-indigo-200 ring-2 ring-indigo-500 ring-offset-2' : ''}
                         `}
-                        onClick={() => { handleMouseLeave(); setIsBrushesOpen(!isBrushesOpen); setIsShapesOpen(false); setIsColorsOpen(false); }}
-                        onMouseEnter={(e) => handleMouseEnter(e, 'Brushes')}
-                        onMouseLeave={handleMouseLeave}
+                        onClick={() => { setIsBrushesOpen(!isBrushesOpen); setIsShapesOpen(false); setIsColorsOpen(false); }}
                     >
                         <span className="pointer-events-none">{currentBrush?.icon}</span>
                         <div className="absolute bottom-1 right-1 w-1.5 h-1.5 rounded-full transition-colors pointer-events-none ${isBrushActive ? 'bg-indigo-500' : 'bg-gray-400'}"></div>
@@ -295,8 +254,6 @@ export const Toolbar: React.FC = () => {
                                                     : 'bg-white text-gray-600 hover:bg-indigo-50 hover:text-indigo-600 hover:scale-105'
                                                 }`}
                                             onClick={() => handleToolSelect(tool.id)}
-                                            onMouseEnter={(e) => handleMouseEnter(e, tool.label)}
-                                            onMouseLeave={handleMouseLeave}
                                         >
                                             {tool.icon}
                                         </button>
@@ -341,9 +298,7 @@ export const Toolbar: React.FC = () => {
                 <button
                     className={`w-10 h-10 md:w-12 md:h-12 rounded-full border-4 border-white shadow-sm ring-1 ring-gray-200 transition-transform group relative ${isColorsOpen ? 'scale-110 ring-indigo-300' : 'hover:scale-105'}`}
                     style={{ backgroundColor: brushColor }}
-                    onClick={() => { handleMouseLeave(); setIsColorsOpen(!isColorsOpen); setIsShapesOpen(false); setIsBrushesOpen(false); }}
-                    onMouseEnter={(e) => handleMouseEnter(e, 'Colors')}
-                    onMouseLeave={handleMouseLeave}
+                    onClick={() => { setIsColorsOpen(!isColorsOpen); setIsShapesOpen(false); setIsBrushesOpen(false); }}
                 />
 
                 {isColorsOpen && (
@@ -375,8 +330,6 @@ export const Toolbar: React.FC = () => {
                                             }`}
                                         style={{ backgroundColor: color }}
                                         onClick={() => { setBrushColor(color); closeAllPopups(); }}
-                                        onMouseEnter={(e) => handleMouseEnter(e, color)}
-                                        onMouseLeave={handleMouseLeave}
                                     />
                                 ))}
                             </div>
@@ -384,23 +337,7 @@ export const Toolbar: React.FC = () => {
                     </RenderPopup>
                 )}
             </div>
-            {tooltipData && createPortal(
-                <div
-                    className="fixed z-[10000] px-2 py-1 bg-gray-800 text-white text-xs font-medium rounded shadow-lg whitespace-nowrap pointer-events-none animate-in fade-in duration-200"
-                    style={{
-                        left: tooltipData.x,
-                        top: tooltipData.y,
-                        transform: tooltipData.align === 'right' ? 'translateY(-50%)' : 'translate(-50%, -100%)'
-                    }}
-                >
-                    {tooltipData.text}
-                    <div className={`absolute w-0 h-0 border-4 border-transparent ${tooltipData.align === 'right'
-                        ? 'border-r-gray-800 right-full top-1/2 -translate-y-1/2 -mr-[1px]'
-                        : 'border-t-gray-800 top-full left-1/2 -translate-x-1/2 -mt-[1px]'
-                        }`} />
-                </div>,
-                document.body
-            )}
+
         </div>
     );
 };

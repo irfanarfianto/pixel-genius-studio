@@ -263,11 +263,16 @@ export const DrawingCanvas: React.FC = () => {
     } | null>(null);
 
     const isFinalizing = useRef(false);
-    const textInputJustCreated = useRef(false); // Track if we just created text input
+    const creationTime = useRef(Date.now()); // Track creation time to prevent immediate close
     const textareaRef = useRef<HTMLTextAreaElement>(null);
 
     useEffect(() => {
-        if (textInput && textareaRef.current) textareaRef.current.focus();
+        if (textInput && textareaRef.current) {
+            // Small delay to ensure render and prevent immediate blur/race conditions
+            setTimeout(() => {
+                textareaRef.current?.focus();
+            }, 50);
+        }
     }, [textInput]);
 
     // Handle Delete Key
@@ -287,6 +292,12 @@ export const DrawingCanvas: React.FC = () => {
     }, [selectedIds, deleteLines]);
 
     const finalizeText = () => {
+        // Prevent accidental closing immediately after creation (e.g. from phantom clicks/blurs)
+        if (Date.now() - creationTime.current < 500) {
+            if (textareaRef.current) setTimeout(() => textareaRef.current?.focus(), 10);
+            return;
+        }
+
         if (isFinalizing.current) return;
         isFinalizing.current = true;
         if (textInput && textInput.text.trim() !== "") {
@@ -302,6 +313,7 @@ export const DrawingCanvas: React.FC = () => {
             });
         }
         setTextInput(null);
+        // Reset finalizing flag after a short delay to allow clicks to register
         setTimeout(() => { isFinalizing.current = false; }, 200);
     };
 
@@ -336,14 +348,11 @@ export const DrawingCanvas: React.FC = () => {
 
         checkDeselect(e);
 
-        // If text input exists, finalize it (but not if we just created it this frame)
-        if (textInput && !textInputJustCreated.current) {
+        // If text input exists, finalize it (but not if we just created it recently)
+        if (textInput && (Date.now() - creationTime.current > 500)) {
             finalizeText();
             return;
         }
-
-        // Reset the flag after checking
-        textInputJustCreated.current = false;
 
         if (activeTool === 'select') {
             const stage = e.target.getStage();
@@ -377,7 +386,8 @@ export const DrawingCanvas: React.FC = () => {
             const pointer = stage.getPointerPosition();
             if (!pointer) return;
             isFinalizing.current = false;
-            textInputJustCreated.current = true; // Mark that we just created it
+            creationTime.current = Date.now();
+            console.log("Creating Text Input at:", pointer);
             setTextInput({
                 x: pos.x, y: pos.y, domX: pointer.x, domY: pointer.y, text: ""
             });
@@ -660,8 +670,10 @@ export const DrawingCanvas: React.FC = () => {
                         }}
                         onBlur={finalizeText}
                         placeholder="Type..."
+                        autoFocus
                         style={{
                             position: 'absolute',
+                            zIndex: 10000,
                             left: textInput.domX,
                             top: textInput.domY,
                             fontSize: `${brushSize * 3 * scale}px`,
@@ -673,24 +685,34 @@ export const DrawingCanvas: React.FC = () => {
                             boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
                             outline: 'none',
                             minWidth: '100px',
+                            minHeight: '40px',
+                            backgroundColor: '#fffbeb', // Light yellow for visibility
                             padding: '4px 8px',
                             margin: '0',
                             resize: 'none',
                             overflow: 'hidden',
                             whiteSpace: 'pre',
                             transformOrigin: 'top left',
-                            zIndex: 100,
+
                             fontFamily: 'sans-serif'
                         }}
                         className="backdrop-blur-sm animate-in fade-in zoom-in duration-200"
                     />
+
                 )
             }
 
             {/* REFERENCE IMAGE CONTROLS ONLY */}
             {
-                referenceImage && (
-                    <div className="absolute top-4 right-4 z-50 flex flex-col gap-2 pointer-events-auto">
+                referenceImage && refImgObj && (
+                    <div
+                        className="absolute z-50 flex flex-col gap-2 pointer-events-auto transition-opacity duration-75"
+                        style={{
+                            left: position.x + (10 * scale),
+                            top: position.y + (10 * scale),
+                            transform: 'translate(calc(-100% - 12px), 0)', // Position to the left of the image with gap
+                        }}
+                    >
                         {/* Close Button & Title */}
                         <div className="bg-white/90 backdrop-blur-sm p-2 rounded-lg shadow-md border border-indigo-100 flex items-center gap-2">
                             <span className="text-xs font-bold text-indigo-600 uppercase tracking-wider px-1">Ref Image</span>
