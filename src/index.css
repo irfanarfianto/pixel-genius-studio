@@ -1,0 +1,76 @@
+@import "tailwindcss";
+
+@theme {
+  /* Modern Palette Override */
+  --color-indigo-500: #6366f1;
+  --color-indigo-600: #4f46e5;
+
+  /* Custom utility classes support */
+}
+
+:root {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+
+  /* Modern Palette Variables (Used in dynamic styling) */
+  --bg-primary: #f3f4f6;
+  --bg-secondary: #ffffff;
+  --accent-color: #6366f1;
+  --accent-hover: #4f46e5;
+  --text-primary: #1f2937;
+  --text-secondary: #6b7280;
+
+  /* Glass Effect */
+  --glass-bg: rgba(255, 255, 255, 0.7);
+  --glass-border: rgba(255, 255, 255, 0.5);
+  --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  overflow: hidden;
+  width: 100vw;
+  height: 100vh;
+  /* Subtle background pattern */
+  background-image: radial-gradient(#e5e7eb 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Modern Components */
+.glass-panel {
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  box-shadow: var(--glass-shadow);
+  border-radius: 16px;
+}
+
+.modern-button {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.modern-button:active {
+  transform: scale(0.95);
+}
