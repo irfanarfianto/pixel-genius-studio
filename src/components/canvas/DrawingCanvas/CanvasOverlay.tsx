@@ -1,5 +1,13 @@
 import React from 'react';
-import { Layer, Rect, Circle, Transformer, Group, Text } from 'react-konva';
+import {
+  Layer,
+  Rect,
+  Circle,
+  Transformer,
+  Group,
+  Text,
+  Line as KonvaLine,
+} from 'react-konva';
 import type Konva from 'konva';
 import { CanvasItem } from '@/components/CanvasItem'; // Imports strictly from where it exists
 import type { Line } from '@/types';
@@ -59,6 +67,22 @@ export const CanvasOverlay: React.FC<CanvasOverlayProps> = ({
           stroke="rgba(99, 102, 241, 0.8)"
           strokeWidth={2}
           dash={[5, 5]}
+          listening={false}
+        />
+      )}
+
+      {/* Mirror Axis Helper */}
+      {activeTool === 'mirror' && (
+        <KonvaLine
+          points={[
+            stageSize.width / 2,
+            0,
+            stageSize.width / 2,
+            stageSize.height,
+          ]}
+          stroke="rgba(99, 102, 241, 0.5)"
+          strokeWidth={2}
+          dash={[10, 10]}
           listening={false}
         />
       )}
