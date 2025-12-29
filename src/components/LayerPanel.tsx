@@ -1,4 +1,5 @@
 import React from 'react';
+import { X } from 'lucide-react';
 import { useDrawingStore } from '../store/drawingStore';
 
 export const LayerPanel: React.FC = () => {
@@ -10,13 +11,23 @@ export const LayerPanel: React.FC = () => {
     deleteLayer,
     toggleLayerVisibility,
     updateLayerOpacity,
+    toggleLayerPanel,
   } = useDrawingStore();
 
   return (
     <div className="glass-panel h-full flex flex-col overflow-hidden">
       {/* Header */}
       <div className="p-4 border-b border-gray-200/50 flex items-center justify-between">
-        <h2 className="font-semibold text-gray-700">Layers</h2>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={toggleLayerPanel}
+            className="text-gray-400 hover:text-gray-600 p-1 rounded-md transition-colors"
+            title="Close Panel"
+          >
+            <X size={18} />
+          </button>
+          <h2 className="font-semibold text-gray-700">Layers</h2>
+        </div>
         <button
           onClick={addLayer}
           className="bg-indigo-50 text-indigo-600 hover:bg-indigo-100 p-2 rounded-lg transition-colors"
