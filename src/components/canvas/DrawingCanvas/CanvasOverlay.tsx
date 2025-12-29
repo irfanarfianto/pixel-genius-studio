@@ -80,7 +80,8 @@ export const CanvasOverlay: React.FC<CanvasOverlayProps> = ({
             stageSize.width / 2,
             stageSize.height,
           ]}
-          stroke="rgba(99, 102, 241, 0.5)"
+          stroke="#6366F1"
+          opacity={0.75}
           strokeWidth={2}
           dash={[10, 10]}
           listening={false}
