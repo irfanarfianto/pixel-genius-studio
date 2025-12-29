@@ -28,6 +28,7 @@ interface CanvasOverlayProps {
   brushSize: number;
   currentLine: Line | null;
   stageSize: { width: number; height: number };
+  isMirrorAxisVisible: boolean;
 }
 
 /**
@@ -43,6 +44,7 @@ export const CanvasOverlay: React.FC<CanvasOverlayProps> = ({
   brushSize,
   currentLine,
   stageSize,
+  isMirrorAxisVisible,
 }) => {
   const showCustomCursor = activeTool !== 'select' && cursorPos;
 
@@ -72,7 +74,7 @@ export const CanvasOverlay: React.FC<CanvasOverlayProps> = ({
       )}
 
       {/* Mirror Axis Helper */}
-      {activeTool === 'mirror' && (
+      {activeTool === 'mirror' && isMirrorAxisVisible && (
         <KonvaLine
           points={[
             stageSize.width / 2,

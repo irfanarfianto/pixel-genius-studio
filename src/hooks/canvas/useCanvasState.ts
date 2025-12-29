@@ -27,6 +27,7 @@ export const useCanvasState = () => {
     referenceImage,
     activeLayerId,
     referenceOpacity,
+    isMirrorAxisVisible,
   } = useDrawingStore();
 
   // Refs
@@ -112,6 +113,7 @@ export const useCanvasState = () => {
     referenceImage,
     activeLayerId,
     referenceOpacity,
+    isMirrorAxisVisible,
 
     // Refs
     stageRef,

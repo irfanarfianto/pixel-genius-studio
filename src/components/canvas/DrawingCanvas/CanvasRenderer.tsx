@@ -27,6 +27,7 @@ interface CanvasRendererProps {
   cursorPos: { x: number; y: number } | null;
   brushColor: string;
   brushSize: number;
+  isMirrorAxisVisible: boolean;
 
   // Event handlers
   handleWheel: (e: KonvaEventObject<WheelEvent>) => void;
@@ -68,6 +69,7 @@ export const CanvasRenderer: React.FC<CanvasRendererProps> = ({
   onShapeDragEnd,
   onShapeTransformEnd,
   setCursorPos,
+  isMirrorAxisVisible,
 }) => {
   const showCustomCursor = activeTool !== 'select' && cursorPos;
   // If active tool is 'text', we use the 'text' cursor via CSS (set in useCanvasEvents usually)
@@ -166,6 +168,7 @@ export const CanvasRenderer: React.FC<CanvasRendererProps> = ({
           cursorPos={cursorPos}
           brushColor={brushColor}
           brushSize={brushSize}
+          isMirrorAxisVisible={isMirrorAxisVisible}
           currentLine={currentLine}
           stageSize={stageSize}
         />

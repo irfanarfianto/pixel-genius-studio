@@ -40,6 +40,8 @@ interface DrawingState {
   setBrushColor: (color: string) => void;
   brushSize: number;
   setBrushSize: (size: number) => void;
+  isMirrorAxisVisible: boolean;
+  toggleMirrorAxisVisibility: () => void;
 
   // Layers
   layers: Layer[];
@@ -109,6 +111,11 @@ export const useDrawingStore = create<DrawingState>()(
       setBrushColor: (color) => set({ brushColor: color }),
       brushSize: TOOL_DEFAULTS.BRUSH_SIZE,
       setBrushSize: (size) => set({ brushSize: size }),
+
+      // Mirror Tool Settings
+      isMirrorAxisVisible: true,
+      toggleMirrorAxisVisibility: () =>
+        set((state) => ({ isMirrorAxisVisible: !state.isMirrorAxisVisible })),
 
       // Initial Layers
       layers: [

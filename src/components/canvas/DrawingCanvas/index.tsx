@@ -60,6 +60,7 @@ export const DrawingCanvas: React.FC = () => {
         cursorPos={state.cursorPos}
         brushColor={state.brushColor}
         brushSize={state.brushSize}
+        isMirrorAxisVisible={state.isMirrorAxisVisible}
         handleWheel={events.handleWheel}
         handleMouseDown={events.handleMouseDown}
         handleMouseMove={events.handleMouseMove}

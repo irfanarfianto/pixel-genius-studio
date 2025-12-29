@@ -1,4 +1,5 @@
 import React from 'react';
+import { Eye, EyeOff } from 'lucide-react';
 import { useDrawingStore } from '@/store/drawingStore';
 import type { Tool } from '@/types';
 import {
@@ -24,6 +25,8 @@ export const Toolbar: React.FC = () => {
     setBrushColor,
     brushSize,
     setBrushSize,
+    isMirrorAxisVisible,
+    toggleMirrorAxisVisibility,
   } = useDrawingStore();
 
   const [isShapesOpen, setIsShapesOpen] = React.useState(false);
@@ -155,6 +158,28 @@ export const Toolbar: React.FC = () => {
         onSelectColor={setBrushColor}
         onCloseAll={closeAllPopups}
       />
+
+      {/* Mirror Axis Toggle */}
+      {activeTool === 'mirror' && (
+        <>
+          <div className="w-px h-6 md:w-8 md:h-px bg-gray-300 md:bg-gray-200 shrink-0 my-1"></div>
+          <button
+            onClick={toggleMirrorAxisVisibility}
+            className={`p-2 rounded-xl transition-all shadow-sm ${
+              isMirrorAxisVisible
+                ? 'bg-indigo-100 text-indigo-600 ring-2 ring-indigo-200'
+                : 'bg-white text-gray-400 hover:bg-gray-50 border border-gray-200'
+            }`}
+            title={
+              isMirrorAxisVisible
+                ? 'Sembunyikan Garis Bantu'
+                : 'Tampilkan Garis Bantu'
+            }
+          >
+            {isMirrorAxisVisible ? <Eye size={20} /> : <EyeOff size={20} />}
+          </button>
+        </>
+      )}
     </div>
   );
 };
