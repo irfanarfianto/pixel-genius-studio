@@ -1,7 +1,8 @@
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
-import tailwindcss from '@tailwindcss/vite'
-import { VitePWA } from 'vite-plugin-pwa'
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+import tailwindcss from '@tailwindcss/vite';
+import { VitePWA } from 'vite-plugin-pwa';
+import path from 'path';
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -14,7 +15,8 @@ export default defineConfig({
       manifest: {
         name: 'Pixel Genius Studio',
         short_name: 'Pixel Genius',
-        description: 'A powerful pixel art and drawing studio with advanced tools',
+        description:
+          'A powerful pixel art and drawing studio with advanced tools',
         theme_color: '#6366f1',
         background_color: '#ffffff',
         display: 'standalone',
@@ -25,26 +27,26 @@ export default defineConfig({
           {
             src: 'pwa-64x64.png',
             sizes: '64x64',
-            type: 'image/png'
+            type: 'image/png',
           },
           {
             src: 'pwa-192x192.png',
             sizes: '192x192',
-            type: 'image/png'
+            type: 'image/png',
           },
           {
             src: 'pwa-512x512.png',
             sizes: '512x512',
             type: 'image/png',
-            purpose: 'any'
+            purpose: 'any',
           },
           {
             src: 'maskable-icon-512x512.png',
             sizes: '512x512',
             type: 'image/png',
-            purpose: 'maskable'
-          }
-        ]
+            purpose: 'maskable',
+          },
+        ],
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
@@ -56,19 +58,33 @@ export default defineConfig({
               cacheName: 'google-fonts-cache',
               expiration: {
                 maxEntries: 10,
-                maxAgeSeconds: 60 * 60 * 24 * 365 // 1 year
+                maxAgeSeconds: 60 * 60 * 24 * 365, // 1 year
               },
               cacheableResponse: {
-                statuses: [0, 200]
-              }
-            }
-          }
-        ]
+                statuses: [0, 200],
+              },
+            },
+          },
+        ],
       },
       devOptions: {
         enabled: true,
-        type: 'module'
-      }
-    })
+        type: 'module',
+      },
+    }),
   ],
-})
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, './src'),
+      '@components': path.resolve(__dirname, './src/components'),
+      '@hooks': path.resolve(__dirname, './src/hooks'),
+      '@store': path.resolve(__dirname, './src/store'),
+      '@utils': path.resolve(__dirname, './src/utils'),
+      '@types': path.resolve(__dirname, './src/types'),
+      '@constants': path.resolve(__dirname, './src/constants'),
+      '@lib': path.resolve(__dirname, './src/lib'),
+      '@config': path.resolve(__dirname, './src/config'),
+      '@assets': path.resolve(__dirname, './src/assets'),
+    },
+  },
+});

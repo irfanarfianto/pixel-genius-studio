@@ -1,0 +1,20 @@
+# Ignore build outputs
+dist
+dev-dist
+build
+.next
+out
+
+# Ignore dependencies
+node_modules
+.pnp
+.pnp.js
+
+# Ignore generated files
+*.tsbuildinfo
+.vite
+
+# Ignore lock files (optional - some teams prefer to format these)
+package-lock.json
+yarn.lock
+pnpm-lock.yaml

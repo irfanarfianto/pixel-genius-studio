@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { Header } from './components/Header';
-import { Toolbar } from './components/Toolbar';
-import { DrawingCanvas } from './components/DrawingCanvas';
+import { Toolbar } from './components/toolbar';
+import { DrawingCanvas } from './components/canvas/DrawingCanvas';
 import { LayerPanel } from './components/LayerPanel';
 import { useDrawingStore } from './store/drawingStore';
 import { WelcomeModal } from './components/WelcomeModal';
@@ -34,7 +34,6 @@ const App: React.FC = () => {
 
       {/* Main Workspace - Flexible Area */}
       <div className="flex-1 flex flex-col md:flex-row relative min-h-0">
-
         {/* Toolbar - Bottom on Mobile, Left on Desktop */}
         <div className="order-3 md:order-1 w-full md:w-auto z-20 md:h-full md:py-4 md:pl-4">
           <Toolbar />
@@ -51,7 +50,6 @@ const App: React.FC = () => {
             </div>
           )}
         </div>
-
       </div>
     </div>
   );
